@@ -1,0 +1,162 @@
+library(ggplot2)
+library(car)
+library(effects)
+
+
+###1a Load in ChildAggression.csv. This data set contains information about the aggressiveness of different children and their life habits. You are going to use the variable Aggression as your outcome variable and the other variables as your predictors. These include Television (how much TV the kids watch), Computer_Games (how much they play computer games), Sibling_Aggression (how aggressive their siblings are), Diet (how healthy the food is they eat), Parenting_Style (how much parents allow children to misbehave), and Sleep_Quality (how much sleep they get).
+childData<- read.table(file.choose(),  header = TRUE, sep="\t", comment.char="", quote="")
+
+
+###1b Build your first multiple regression model. Inspect the output. Is the model significant? How much variance is explained in the sample data? How much variance can we expect would be explained in the population? Why is Adjusted R^2 lower than Multiple R^2? Which predictors are significant? Which predictors are not significant?
+childReg <- lm(  Aggression~ Television + Computer_Games +  Sibling_Aggression + Diet + Parenting_Style + Sleep_Quality, data=childData); childReg
+summary(childReg)
+
+#There was a significant relationship within the F-Ratio, p<0.001 (p-value < 1.598e-10). Which tells us there is less than a 0.1% chance that an F-ratio this large would happen if the null hypothesis were true. This indicates that our regression model results in in significantly better prediction of agression, than if we used the mean value of aggression. So, the regression model overall predicts aggression significantly well.
+
+#The predictors can account for 8.302% of the variance in aggression in this sample.
+#The predictors can account for the variance of 7.467% in aggression in the population.
+#Adjusted R is lower, because now it's compared to the whole population instead of a sample, so you have to take shrinkage into account. 
+#Computer_Games  ***, Sibling_Aggression *, Diet **, Parenting_Style  *** are significant.
+#Sleep_Quality and Television are not significant.
+
+
+###1c Is there a problem with multicollinearity in this model?
+vif(childReg) #Largest VIF is not >10
+1/vif(childReg) # non below 0.1 or around 0.2
+mean(vif(childReg)) # 1.23061, not substantially bigger.
+
+#Thus: no problem of multicollinearity.
+
+###1d Now check the assumptions of no autocorrelation, homoscedasticity, normally distributed residuals, and check that there are no highly influential points.
+par(mfrow =c(2,2))
+plot (childReg)
+#No straight line, so not normal distributed.
+#Homoscedasticity: this assumption does hold, the redline doesn't deviate that much from the line, and the datapoints don't really funnel out, so this doesn't indicate variance across residuals and doesn't indicate heteroscedasticity. 
+durbinWatsonTest(childReg)
+#Statistic= 1.91146, very close to 2, so assumption has probably been met, so probably not correlated. P-value of Value .248 confirms this, it is bigger than .05, and therefore not-significant. The value however is less than 2, so indicates a positive correlation. So this assumption has  been met, and thus the residuals are uncorrelated. 
+
+#Leverage points:
+dim(childData)
+averageChild <- (1+6)/666; averageChild #=  0.01051051 #(k+1)/n
+childHat <- hatvalues(childReg) 
+childHatTable<-childHat > 2 *  averageChild | childHat > 3*   averageChild; childHatTable
+table(childHatTable)
+#74 of the values are 2 or 3 times bigger than the ave. value, so quite a few datapoints are leverage points and are thus data-points with extreme x-values, and thus affect the data points positioning.
+#This gives cause for concern.
+
+#Influential points:
+cookChild<-cooks.distance(childReg)
+cookChildTable<-cookChild> 1; cookChildTable
+table(cookChildTable)
+#Non of the values are bigger than 1. So, there are no influential points, and thus outliers, that may affect the slope of the regression line.
+#If you also look at the graph non of the points fall below the cook line.
+
+
+###1e Now you are going to perform model selection. Are there any predictors you could remove to make the model better? Consider both AIC and significance in your decision. Pick the "worst" predictor and remove it. Explain your choice. (Note: you should look for a drop in the real value of AIC, not in the absolute value). How has removing the predictor affected the R^2 values? 
+drop1(childReg,   test="F")
+#AIC of model=-1564.9 
+#We want to look for the predictor that (1) shows the largest drop in AIC, and (2) is the most non-significant. Thus we take Sleep_Quality.
+
+childReg.2 <-  lm(  Aggression~  Television + Computer_Games +  Sibling_Aggression + Diet + Parenting_Style, data=childData); childReg.2
+summary(childReg.2)
+
+#R^2 is now 8.258% and  adjusted R-Squared is now 7.563% , removing the predictor didn't really dropped those values, so this is good.
+
+###1f Continue checking for predictors you can remove and remove them. Stop when there are no more predictors whose removal would improve the model. What are the predictors in the final model? What did you notice about the change in multiple R^2 as you removed predictors? What did you notice about the change in adjusted R^2? Why do you think this is?
+
+drop1(childReg.2,   test="F")
+#AIC=-1566.6 
+#Television=-1568.1, and we want to look for the predictor that (1) shows the largest drop in AIC, and (2) is the most non-significant. Which is television.
+
+childReg.3 <-  lm(  Aggression~ + Computer_Games +  Sibling_Aggression + Diet + Parenting_Style, data=childData); childReg.3
+summary(childReg.3)
+#R^2 is now 8.187% and  adjusted R-Squared is now 7.631%. Removing the predictor didn't really dropped those values, so this is good.
+
+drop1(childReg.3,   test="F")
+#AIC=-1568.1
+#Sibling_Aggression=-1565.0, his AIC is not that much better, so we can try to remove it and see the effects. 
+childReg.4 <-  lm(  Aggression~ + Computer_Games + Diet + Parenting_Style, data=childData); childReg.4
+summary(childReg.4)
+
+#Multiple R-squared:  7.479%,	Adjusted R-squared:  7.059%, which is kind a drop, so we keep sibling agression in the model.
+
+finalModel <- lm(  Aggression~ + Computer_Games +  Sibling_Aggression + Diet + Parenting_Style, data=childData)
+#Final predictors are: Computer_Games +  Sibling_Aggression + Diet + Parenting_Style.
+#R^2, always drops a bit, even if the predictor can be removed. Because, even if the predictor doesn't have a influence, due trough random correlation happenening, when you add more predictors, a bit more variance can always be explained.
+#Same explaination as by R^2, only now with the population instead of a sample.
+
+###WHEN YOU REACH HERE, RAISE YOUR HAND SO THAT YOUR TA CAN SIGN YOU OFF FOR THE DAY.
+
+###2a Load in the data from Supermodel.dat. This data contains information about supermodels salaries, age, years spent working, and beauty. Build a multiple regression that predicts salary as a function of the other 3 variables. Which predictors are significant? Which are not? How much of the variance in the data is explained?
+modelData<- read.table(file.choose(),  header = TRUE, sep="\t", comment.char="", quote="")
+head(modelData)
+
+modelReg <- lm(   salary~ age + years + beauty, data=modelData); modelReg
+summary(modelReg)
+#Age and years are significant.
+#Beauty is not significant.
+#The predictors can account for 18.4% of the variance in salary in this sample.
+#The predictors can account for the variance of 17.33% in salary in the population.
+
+###2b Does the model violate any assumptions?
+#Variable types: predictor variables are quantatitaive and outcome variables are continuous, unbounded and quantitative.
+#Multicollinearity:
+vif(modelReg) #Largest VIF is >10
+1/vif(modelReg) # age and years active are below 0.1 (or around 0.2), which indicates serious problem.
+mean(vif(modelReg)) # 8.65432, this is substantially bigger than 1.
+#Indicates serious multi-collineairity.
+
+par(mfrow =c(2,2))
+plot (modelReg)
+#No straight line, so not normal distributed.
+#Homoscedasticity: this assumption doesn't hold, the redline does deviate that much from the line, and the datapoints do really funnel out, so this doesn indicate variance across residuals and so does indicate heteroscedasticity. 
+durbinWatsonTest(modelReg)
+#Statistic=  2.057416, very close to 2, so assumption has probably been met, so probably not correlated. P-value of Value .697 confirms this, it is bigger than .05, and therefore not-significant. The value however is less than 2, so indicates a positive correlation. So this assumption has  been met, and thus the residuals are uncorrelated. 
+
+#Leverage points:
+dim(modelData)
+averageModel <- (1+3)/231; averageModel #=  0.01731602 #(k+1)/n
+modelHat <- hatvalues(modelReg) 
+modelHatTable<-modelHat > 2 *  averageModel | modelHat > 3*   averageModel; modelHatTable
+table(modelHatTable)
+#25 of the values are 2 or 3 times bigger than the ave. value, so quite a few datapoints are leverage points and are thus data-points with extreme x-values, and thus affect the data points positioning.
+#This gives cause for concern.
+#Also if you look at the graph: we have quite a few datapoints with extreme x-values, so we have leverage points, which gives cause for concern. 
+
+#Influential points:
+cookModel<-cooks.distance(modelReg)
+cookModelTable<-cookModel> 1; cookModelTable
+table(cookModelTable)
+#Non of the values are bigger than 1. So, there are no influential points, and thus outliers, that may affect the slope of the regression line.
+#If you also look at the graph non of the points fall in the cook's distance and thus influence the cloud of the dots. The cloud of datapoints is pretty close to each other, and we don't have one point which affects the regression line highly.
+
+###2c What do you think the results in 2b mean for the variables "age" and "years"?
+##This probably means that there is a correlation between the predictors age and yeas. This makes inuitively sense, since the more years someone is active within a progression the likelihood increases that their are older, which indicates a correlation.
+
+###3a Using the data from exercise 1, create a new multiple regression with only Computer_Games and Parenting_Style as predictors (and Aggression as the outcome). Create a visualization of the 2-dimensional regression surface. Use the geom_tile() in ggplot2.
+childReg3M <- lm(  Aggression~ Computer_Games + Parenting_Style, data=childData); childReg3M
+
+plot(allEffects(childReg3M))
+
+xgrid <-  seq(min(childData$Computer_Games), max(childData$Computer_Games), 50)
+ygrid <-  seq(min(childData$Parenting_Style), max(childData$Parenting_Style), 1)
+
+#Now we create a data frame that enumerates every possible combination of the two ranges we just created.
+all_combos <- expand.grid(Computer_Games=xgrid, Parenting_Style=ygrid)
+head(all_combos)
+
+#Next, using the model, we predict outcomes (sales) based on the values of adverts and airplay that we just created
+predicted_outcomes <- predict(childReg3M, newdata=all_combos)
+
+#Put the predicted outcomes into the data frame as a new column
+all_combos$Aggression <- predicted_outcomes
+head(all_combos)
+
+#Now we plot!
+ggplot(all_combos, aes(x=Computer_Games, y=Parenting_Style, z=Aggression)) + geom_tile(aes(fill =Aggression ))  + scale_fill_gradient(low="white", high="black")
+
+
+
+
+
+

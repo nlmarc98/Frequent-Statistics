@@ -47,17 +47,22 @@ table(cookChildTable)
 techni <- datadist(read_baby)
 options(datadist="techni")
 
-#Then we create our model object and print it to the screen
-modelcurve <- lrm(Orangeness~Carrots, data=read_baby); modelcurve
-summary(modelcurve)
-#In the carrots row, there is a p-value <0.0001 for the model which is less than 0.05, so it is significant.
+modelcurved <- lm(Orangeness~poly(Carrots,2), data=read_baby)
+summary(modelcurved)
+#The new model is significant (p-value: < 2.2e-16). 
 
 #First R^2:  0.7511.
-#Now R^2: ?????????????????
+#Now R^2:    0.8128
+#So the R^2 is bigger. 
 
 
 ###1d Plot a curved line that corresponds to your new regression on top of a scatterplot of the data points.
+predict(modelcurved, newdata=data.frame(Carrots=c(10,20,30)))
 
+read_baby$PREDICTED_ORANGENESS <- predict(modelcurved)
+head(read_baby)
+
+ggplot(read_baby, aes(Carrots, Orangeness)) + geom_point() + geom_smooth(method="lm") + geom_line(aes(Carrots,PREDICTED_ORANGENESS, colour="red"))
 
 
 ###2a Load in healing.csv. This spreadsheet contains data on the time it takes for small cuts in the skin heal for people of different ages. Run a simple linear regression, discuss significance, variance explained, and direction of relationship, and check assumptions (HINT: your plot for checking the assumption of homoscedasticity is going to look weird, but remember that the assumption is violated if there is a "fan shape" to the data points)
@@ -97,21 +102,24 @@ table(cookChildTable)
 #No dots lie beneath the cook line. There are no highly influential points.
 
 
-
-
-
-
 #2b As in 1, the assumption of linearity has been violated. Again, you need to apply a regression technique that's appropriate to use when your data is curved. (HINT: HOW MANY CURVES ARE THERE IN THIS DATA??) Is your new model significant? How has R^2 changed?
 
-curved <- datadist(read_healing)
-options(datadist="curved")
 
-#Then we create our model object and print it to the screen
-modelcurve <- lrm(age~healing_rate, data=read_healing); modelcurve
-#In the healing_rate row, there is a p-value <0.0001 for the model which is less than 0.05, so it is significant.
+modelagecurved <- lm(healing_rate~poly(age,2), data=read_healing)
+summary(modelagecurved)
+
+#model is significant: p-value: < 2.2e-16. 
+#Before R^2:    0.5581
+#Now R^2:       0.5663
+
 
 ###2c Plot a curved line that corresponds to your new regression on top of a scatterplot of the data points.
+predict(modelagecurved, newdata=data.frame(age=c(10,20,30)))
 
+read_baby$PREDICTED_HEALING_RATE<- predict(modelagecurved)
+head(read_healing)
+
+ggplot(read_healing, aes(age, healing_rate)) + geom_point() + geom_smooth(method="lm") + geom_line(aes(age,PREDICTED_HEALING_RATE, colour="red"))
 
 
 ###3a Load in uscrime.csv. This spreadsheet contains data on U.S. crime statistics in 1960 for different U.S. states. You are going to run a multiple regression (in 3b) to determine which variables predict crime. The variables in this spreadsheet include:
@@ -234,4 +242,3 @@ summary(carModel3)
 ###4f How do disp and hp behave differently in 4d versus 4e? Why do you think this is? (consider what assumption was violated in 4c. It may also help to think back to partial correlations.)
 
 #Disp and hp are significant in 4e but not in 4d.
-

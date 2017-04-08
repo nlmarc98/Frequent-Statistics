@@ -1,0 +1,237 @@
+library(car)
+library(ggplot2)
+##oranges carrots
+
+###1a Load in babyskin.csv. This spreadsheet contains data on the orangeness of different babies' skin and how many cans of carrot baby food they eat each month. 
+#Run a simple regression with orangeness as your outcome and carrots as your predictor. 
+#Discuss significance, amount of variance explained, and direction of relationship.
+read_baby <- read.table(file.choose(), header=TRUE, sep="\t", quote="", comment.char="", fill=TRUE)
+head(read_baby)
+
+babyModel <- lm(Orangeness~Carrots, data=read_baby)
+summary(babyModel)
+
+#Carrots has a P <2e-16. So it is highly significant.
+
+#How much variance explained in the sample data:
+#Multiple R-squared:  0.7511 so 7,5% of the variance is explained
+
+#Then we create our model object and print it to the screen
+modelbaby <- lrm(Orangeness~Carrots, data=read_baby); modelbaby
+#????????KOMEN HELE GEKKE GETALLEN UIT!!
+
+###1b Now check assumptions. 
+par(mfrow =c(1,1))
+plot (babyModel)
+#No straight line, so not normal distributed.
+
+#Homoscedasticity: this assumption does hold, the datapoints don't really funnel out, so this doesn't indicate variance across residuals and doesn't indicate heteroscedasticity. 
+
+durbinWatsonTest(babyModel)
+#Statistic= 1.968808, very close to 2, so assumption has probably been met, so probably not correlated. P-value of Value 0.818 confirms this, it is bigger than .05, and therefore not-significant. The value however is less than 2, so indicates a positive correlation. So this assumption has  been met, and thus the residuals are uncorrelated. 
+
+#Leverage points:
+#High leverage and/or highly influential points, and any problems they might be causing.
+hatvalues(babyModel)
+#There are no high leverage points, there are no points which pull the line downwards or upwards.
+cooks.distance(babyModel)
+cookChild<-cooks.distance(babyModel)
+cookChildTable<-cookChild> 1; cookChildTable
+table(cookChildTable)
+#Non of the values are bigger than 1. So, there are no influential points, and thus outliers, that may affect the slope of the regression line.
+#No dots lie beneath the cook line. There are no highly influential points.
+
+
+###1c You should have noticed that the assumption of linearity was violated. Apply a regression technique that's appropriate to use when your data is curved. Is your new model significant? How has R^2 changed?
+
+techni <- datadist(read_baby)
+options(datadist="techni")
+
+#Then we create our model object and print it to the screen
+modelcurve <- lrm(Orangeness~Carrots, data=read_baby); modelcurve
+summary(modelcurve)
+#In the carrots row, there is a p-value <0.0001 for the model which is less than 0.05, so it is significant.
+
+#First R^2:  0.7511.
+#Now R^2: ?????????????????
+
+
+###1d Plot a curved line that corresponds to your new regression on top of a scatterplot of the data points.
+
+
+
+###2a Load in healing.csv. This spreadsheet contains data on the time it takes for small cuts in the skin heal for people of different ages. Run a simple linear regression, discuss significance, variance explained, and direction of relationship, and check assumptions (HINT: your plot for checking the assumption of homoscedasticity is going to look weird, but remember that the assumption is violated if there is a "fan shape" to the data points)
+read_healing <- read.table(file.choose(), header=TRUE, sep="\t", quote="", comment.char="", fill=TRUE)
+head(read_healing)
+
+healingModel <- lm(healing_rate~age, data=read_healing)
+summary(healingModel)
+
+#Age has a P <2e-16. So it is highly significant.
+
+#How much variance explained in the sample data:
+#Multiple R-squared:  0.5581 so 5.6% of the variance is explained
+
+#Then we create our model object and print it to the screen
+modelHealing <- lrm(healing_rate~age, data=read_healing); modelHealing
+
+#Now check assumptions. 
+par(mfrow =c(1,1))
+plot (healingModel)
+#No straight line, so not normal distributed.
+
+#Homoscedasticity: this assumption does hold, the datapoints don't really funnel out, so this doesn't indicate variance across residuals and doesn't indicate heteroscedasticity. 
+
+durbinWatsonTest(healingModel)
+#Statistic= 2.259997, very close to 2, so assumption has probably been met, so probably not correlated. P-value of Value 0.186 confirms this, it is bigger than .05, and therefore not-significant. The value however is more than 2, so indicates a negative correlation. So this assumption has not  been met, and thus the residuals are correlated. 
+
+#Leverage points:
+#High leverage and/or highly influential points, and any problems they might be causing.
+hatvalues(healingModel)
+#There are no high leverage points, there are no points which pull the line downwards or upwards.
+cooks.distance(healingModel)
+cookChild<-cooks.distance(healingModel)
+cookChildTable<-cookChild> 1; cookChildTable
+table(cookChildTable)
+#Non of the values are bigger than 1. So, there are no influential points, and thus outliers, that may affect the slope of the regression line.
+#No dots lie beneath the cook line. There are no highly influential points.
+
+
+
+
+
+
+#2b As in 1, the assumption of linearity has been violated. Again, you need to apply a regression technique that's appropriate to use when your data is curved. (HINT: HOW MANY CURVES ARE THERE IN THIS DATA??) Is your new model significant? How has R^2 changed?
+
+curved <- datadist(read_healing)
+options(datadist="curved")
+
+#Then we create our model object and print it to the screen
+modelcurve <- lrm(age~healing_rate, data=read_healing); modelcurve
+#In the healing_rate row, there is a p-value <0.0001 for the model which is less than 0.05, so it is significant.
+
+###2c Plot a curved line that corresponds to your new regression on top of a scatterplot of the data points.
+
+
+
+###3a Load in uscrime.csv. This spreadsheet contains data on U.S. crime statistics in 1960 for different U.S. states. You are going to run a multiple regression (in 3b) to determine which variables predict crime. The variables in this spreadsheet include:
+#Crime: Crime rate (offenses per 100,000 people)
+#M: Percentage of males aged 14-24 in state population
+#Ed: mean years of schooling of the population aged 25 or older
+#Po1: per capita expenditure on police protection
+#U2: unemployment rate of males 35-39
+#Ineq: income inequality
+#Prob: probability of imprisonment for crime
+#LF: labor force participation rate of urban males 14-24
+#M.F: number of males per 100 females
+#NW: percentage nonwhites in population
+#Time: average time in months served vy offenders in state prisons
+read_crime <- read.table(file.choose(), header=TRUE, sep="\t", quote="", comment.char="", fill=TRUE)
+head(read_crime)
+
+###3b Run a multiple regression with Crime as your outcome variable and all other variables as predictors. Is the model significant? How much variance is explained in the sample? How much variance would we expect to be explained in the general population? Which predictors are significant?
+
+crimeModel <- lm(Crime~M + Ed + Po1 + LF + M.F + NW + U2 + Ineq + Prob + Time, data=read_crime)
+summary(crimeModel)
+
+#M                            Significant
+#Ed                           More significant
+#Po1,Ineq                     Highly significant
+#LF, M.F, NW, U2, Prob,Time   Not significant
+#p-value: 8.027e-09, so the model is significant
+
+
+#How much variance explained in the sample data:
+#Multiple R-squared:  0.7714 so 7,7% of the variance is explained
+
+#How much variance can we expect would be explained in the population:
+#Adjusted R-squared:  0.7079  so 7.1% of the variance can we expect would be explained in the population
+
+###3c Check assumptions of the multiple regression technique (don't worry about linearity here).
+
+
+
+###3d Now perform model selection, removing predictors until you arrive at a final model. At each step, state which predictor you have chosen to remove and why. When you get to the final model, explain why you aren't removing any more predictors. How do multiple R^2 and adjusted R^2 change each time you remove a predictor? Why do you think you see this pattern?
+
+
+###3e Refer back to what each predictor variable name means as described in the instructions for exercise 3a. Provide a description of the different societal factors that predict crime rate in U.S. states (what I mean is don't just list the variable names from the spreadsheet, but actually say what they refer to and how they relate to crime rate). Describe the direction of the relationship between each of these factors and crime rate.
+
+
+###3f The directions of several of the relationships you described in 3e make some sense. However, a couple are very strange. First, it is strange that, as per capita expenditure on police protection increases, so does crime rate. What does this relationship suggest about causality between predictors and outcome variables in observational studies like this one?
+
+
+###3g Another strange relationship is the positive one between number of years of schooling in the population and crime rate. Do you think there is a direct relationship between these two?
+
+
+
+###4a load in mtcars.csv (set row.names=1 in the read.table function). You've worked with this data before; it describes characteristics of different cars. Perform a multiple regression, predicting mpg (miles per gallon, which is a measure of fuel efficiency) based on the following predictors:
+#cyl: number of cylinders in the engine (a cylinder is an engine component where power is created)
+#disp: size of engine
+#hp: horsepower (how powerful the engine is)
+#wt: the weight of the car.
+
+read_mtcars <- read.table(file.choose(), header=TRUE, sep="\t", quote="", comment.char="", fill=TRUE)
+head(read_mtcars)
+
+carModel <- lm(mpg~cyl + disp + hp + wt, data=read_mtcars)
+summary(carModel)
+
+###4b Is the model significant? How much variance in the sample is explained? How much variance in the population would we expect to be explained? Which predictors are significant?
+
+#P 1.061e-10. So it is highly significant.
+
+#How much variance explained in the sample data:
+#Multiple R-squared:  0.8486 so 8,5% of the variance is explained
+
+#How much variance in the population would we expect to be explained:
+#Adjusted R-squared:  0.8262  so 8.2% of the variance can we expect would be explained in the population
+
+#cyl, disp, hp       not significant
+#wt                  highly significant
+
+
+###4c Test the model assumptions. Are any of them violated?
+
+par(mfrow =c(2,2))
+plot (carModel)
+#No straight line, so not normal distributed.
+
+#Homoscedasticity: this assumption does hold, the datapoints don't really funnel out, so this doesn't indicate variance across residuals and doesn't indicate heteroscedasticity. 
+
+durbinWatsonTest(carModel)
+#Statistic= 1.685003, close to 2, so assumption has probably been met, so probably not correlated. P-value of Value 0.208 confirms this, it is bigger than .05, and therefore not-significant. The value however is less than 2, so indicates a positive correlation. So this assumption has  been met, and thus the residuals are uncorrelated. 
+
+#Leverage points:
+#High leverage and/or highly influential points, and any problems they might be causing.
+hatvalues(carModel)
+#There are high leverage points, there are points which pull the line downwards or upwards.: point 20, 17 and 31 in particular.
+cooks.distance(carModel)
+cookChild<-cooks.distance(carModel)
+cookChildTable<-cookChild> 1; cookChildTable
+table(cookChildTable)
+#Non of the values are bigger than 1. So, there are no influential points, and thus outliers, that may affect the slope of the regression line.
+#Only one dot lies beneath the cook line. There are no highly influential points.
+
+
+###4d Run the drop1() function on your regression model. Which predictor would be the best one to drop? Which would be the second best to drop? Why?  (don't actually drop them!)
+
+drop1(carModel, test="F")
+#We want to look for the predictor that shows the largest drop in AIC and is the most non-significant. 
+#The predictor disp would be best to drop because it has the lowest AIC value: 62.665.
+#The predictor hp would be second best to drop because it has after disp the lowest AIC value: 64.746.
+
+
+###4e Now you're going to run 2 simple regressions: one predicting mpg as a function of disp, and a second predicting mpg as a function of hp. Are these models significant?
+carModel2 <- lm(mpg~disp, data=read_mtcars)
+summary(carModel2)
+#So model predicting mpg as a function of disp is significant: p-value: 9.38e-10
+
+carModel3 <- lm(mpg~hp, data=read_mtcars)
+summary(carModel3)
+#So model predicting mpg as a function of hp is significant: p-value: 1.788e-07
+
+
+###4f How do disp and hp behave differently in 4d versus 4e? Why do you think this is? (consider what assumption was violated in 4c. It may also help to think back to partial correlations.)
+
+#Disp and hp are significant in 4e but not in 4d.
+

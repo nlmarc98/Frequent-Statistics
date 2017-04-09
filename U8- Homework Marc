@@ -1,0 +1,427 @@
+library(car)
+library(ggplot2)
+
+#Marc Verwoert s4718801
+#Vera Tukke s4766970
+
+###1a Load in babyskin.csv. This spreadsheet contains data on the orangeness of different babies' skin and how many cans of carrot baby food they eat each month. Run a simple regression with orangeness as your outcome and carrots as your predictor. Discuss significance, amount of variance explained, and direction of relationship.
+babyData<- read.table(file.choose(),  header = TRUE, sep="\t", comment.char="", quote="")
+babyReg <- lm(Orangeness~ Carrots, data=babyData); babyReg
+summary(babyReg)
+
+#R^2= 0.75
+#Carrots can account for 75.11% in variation of orangeness.
+carrotR<- sqrt(0.7511);carrotR
+#R= 0.87 (±.5, which indicates a large effect)
+
+#There was a significant relationship within the F-Ratio, p<0.001 (p-value < 2.2e-16). Which tells us there is less than a 0.1% chance that an F-ratio this large would happen if the null hypothesis were true. This indicates that our regression model results in in significantly better prediction of orangeness, than if we used the mean value of orangeness. So, the regression model overall predicts orangeness significantly well.
+
+graphBaby<- ggplot(babyData, aes(Carrots, Orangeness))
+graphBaby + geom_point() + labs(x = "Carrots", y = "Orangeness") + geom_smooth(method = "lm", colour = "Red")
+#The slope of the graph, indicates a positive relationship between the amount of carrots eaten and orangeness. When Carrots increases, Orangeness does as well.
+
+###1b Now check assumptions. 
+#Variable types: The predictor variable is measured at the interval level, equal intervals on the scale represent equal differences in the property being being measured and thus is quantative. An increase in Carrots indeed results in more carrots being eaten.
+#Outcome variable is quantative, because the outcome variable is measured at the interval level, equal intervals on the scale represent equal differences in the property being being measured, increase in Orangeness results indeed in an increase of orange skin colour. Orangeness is unbounded, orangeness has no constraints on the variability of the outcome, orangeness can take all sorts of ratings between it's bounds. And Orangeness is continuous, it gives us a score for each entity and can take on any value on the measurement scale that we are using, and not only whole numbers. 
+
+#Independence: assumed it is is independent.
+
+#Residuals:
+par(mfrow =c(2,2))
+plot (babyReg)
+
+#Linearity: Theere is a sort of curve in the (first) graph, this indicates that the data have violated the assumption of linearity.
+
+#Normal distributed: almost all of the datapoints fall nicely on the line, so it's normal.
+#Homoscedasticity: this assumption does hold, the redline doesn't deviate that much from the line, and the datapoints don't really funnel out. Also it looks like a random array of dots evenly dispersed around zero. So this doesn't indicate variance across residuals and thus doesn't indicate heteroscedasticity. 
+
+#Auto-correlation
+durbinWatsonTest(babyReg)
+#Statistic= 1.968808 , very close to 2, so assumption has certainly been met, so probably not correlated. P-value of Value .83 confirms this, it is bigger than .05, and therefore non-significant. The value however is less than 2, so indicates a positive correlation. So this assumption has been met, and thus the residuals are uncorrelated. This doesn't indicates some amount of autocorrelation.
+
+#Leverage points:
+dim(babyData)
+averageBaby <- (1+1)/200; averageBaby #=  0.01 #(k+1)/n
+
+babyHat <- hatvalues(babyReg) 
+babyHatTable<-babyHat > 2 *  averageBaby | babyHat > 3*   averageBaby; babyHatTable
+table(babyHatTable)
+#3 of the values are 2 or 3 times bigger than the ave. value, so quite a few datapoints are leverage points and are thus data-points with extreme x-values, and thus affect the data points positioning.
+#Also if you look at the graph: we have quite a few datapoints with extreme x-values, so we have leverage points, which gives cause for concern. 
+
+#Influential points:
+cookBaby<-cooks.distance(babyReg)
+cookBabyTable<-cookBaby > 1; cookBabyTable
+table(cookBabyTable)
+#Non of the values are bigger than 1. So, there are no influential points, and thus outliers, that may affect the slope of the regression line.
+#If you also look at the graph non of the points fall in the cook's distance and thus influence the cloud of the dots. The cloud of datapoints is pretty close to each other, and we don't have one point which affects the regression line highly.
+
+#Reporting:
+##Appendix:
+#Coefficients: B0=103.29, B1=7.86
+#sE's:  (Intercept)= 11.12    Carrots= 0.32 
+#T-Scores: (Intercept) <2e-16 *** Carrots= <2e-16 ***
+#R^2= 0.7511, R= 0.87
+#p-value: < 2.2e-16
+
+#The final model formula was orangeness ~ carrots. All main effects were very significant p-value: < 2.2e-16, and the model was highly significant overall F-statistic: 597.6 on 1 and 19. And achieved a high variance explanation (Multiple R-squared:  0.75,	Adjusted R-squared:  0.75). All regression coefficients as well as their standard errors, t scores and p-values are provided in the appendix. But checking of model assumptions revelead problembs with linearity.
+
+
+###1c You should have noticed that the assumption of linearity was violated. Apply a regression technique that's appropriate to use when your data is curved. Is your new model significant? How has R^2 changed?
+
+model_2 <- lm(Orangeness~poly(Carrots,2), data=babyData)
+
+summary(model_2)
+
+#Multiple R-squared=  0.81
+sqrt(0.81)
+#R=0.9 (Indicating a large effect).
+#The model now has a larger R^2 value, around 0.06 larger.
+
+#There was a significant relationship within the F-Ratio, p<0.001 (p-value < 2.2e-16). Which tells us there is less than a 0.1% chance that an F-ratio this large would happen if the null hypothesis were true. This indicates that our regression model results in in significantly better prediction of orangeness, than if we used the mean value of orangeness. So, the regression model overall predicts orangeness significantly well. 
+
+#The model is still significant.
+
+
+###1d Plot a curved line that corresponds to your new regression on top of a scatterplot of the data points.
+#We got 2 curves and because, generally, the power you want is 1 + the number of curves in your data. We use 2.
+
+predict(model_2, newdata=data.frame(Carrots=c(10,20,30)))
+
+babyData$PREDICTED_ORANGENESS <- predict(model_2)
+
+ggplot(babyData, aes(Carrots, Orangeness)) + geom_point() + geom_smooth(method="lm") + geom_line(aes(Carrots,PREDICTED_ORANGENESS), colour="red")
+
+
+###2a Load in healing.csv. This spreadsheet contains data on the time it takes for small cuts in the skin heal for people of different ages. Run a simple linear regression, discuss significance, variance explained, and direction of relationship, and check assumptions (HINT: your plot for checking the assumption of homoscedasticity is going to look weird, but remember that the assumption is violated if there is a "fan shape" to the data points)
+
+
+healingData<- read.table(file.choose(),  header = TRUE, sep="\t", comment.char="", quote="")
+healingReg <- lm(healing_rate~ age, data=healingData); healingReg
+summary(healingReg)
+
+#R^2= 0.56
+#Age can account for 56% in variation of healing rate.
+HealingR<- sqrt(0.56);HealingR
+#R= 0.75 (±.5, which indicates a large effect)
+
+#There was a significant relationship within the F-Ratio, p<0.001 (p-value < 2.2e-16). Which tells us there is less than a 0.1% chance that an F-ratio this large would happen if the null hypothesis were true. This indicates that our regression model results in in significantly better prediction of healing_rate than if we used the mean value of healing rate. So, the regression model overall predicts healing rate significantly well.
+
+graphHealing<- ggplot(healingData, aes(age, healing_rate))
+graphHealing + geom_point() + labs(x = "age", y = "healing_rate") + geom_smooth(method = "lm", colour = "Red")
+#The slope of the graph, indicates a negative relationship between someone's age and healing_rate. When age increases, healing_rate decreases.
+
+#Variable types: The predictor variable is measured at the interval level, equal intervals on the scale represent equal differences in the property being being measured and thus is quantative. An increase in age indeed results in more years lived.
+#Outcome variable is quantative, because the outcome variable is measured at the interval level, equal intervals on the scale represent equal differences in the property being being measured, increase in healing_rate results indeed in an increase of healing_rate. Healing_rate is unbounded, healing_rate has no constraints on the variability of the outcome, healing_rate can take all sorts of ratings between it's bounds. And healing_rate is continuous, it gives us a score for each entity and can take on any value on the measurement scale that we are using, and not only whole numbers. 
+
+#Independence: assumed it is is independent.
+
+#Residuals:
+par(mfrow =c(2,2))
+plot (healingReg)
+
+#Linearity: There is a sort of curve in the (first) graph, this indicates that the data have violated the assumption of linearity.
+
+#Normal distributed: almost all of the datapoints fall nicely on the line, so it's normal.
+#Homoscedasticity: this assumption does hold, the redline doesn't deviate that much from the line, and the datapoints don't really funnel out. Also it looks like a random array of dots evenly dispersed around zero. So this doesn't indicate variance across residuals and thus doesn't indicate heteroscedasticity. 
+
+#Auto-correlation
+durbinWatsonTest(healingReg)
+#Statistic=  2.259997  , quite very close to 2, so assumption has probably been met, so probably not correlated. P-value of Value  0.17 confirms this, it is bigger than .05, and therefore non-significant. The value however is more than 2, so indicates a negative correlation. So this assumption has been met, and thus the residuals are uncorrelated. This however does indicate some amount of autocorrelation, since we have a pretty low p-value.
+
+#Leverage points:
+dim(healingData)
+averageHealing <- (1+1)/100; averageHealing #=  0.01 #(k+1)/n
+healingHat <- hatvalues(healingReg) 
+healingHatTable<-healingHat > 2 *  averageHealing | healingHat > 3*   averageHealing; healingHatTable
+table(healingHatTable)
+#5 of the values are 2 or 3 times bigger than the ave. value, so quite a few datapoints are leverage points and are thus data-points with extreme x-values, and thus affect the data points positioning.
+#Also if you look at the graph: we have quite a few datapoints with extreme x-values, so we have leverage points, which gives cause for concern. 
+
+#Influential points:
+cookHealing<-cooks.distance(healingReg)
+cookHealingTable<-cookHealing > 1; cookHealingTable
+table(cookHealingTable)
+#Non of the values are bigger than 1. So, there are no influential points, and thus outliers, that may affect the slope of the regression line.
+#If you also look at the graph non of the points fall in the cook's distance and thus influence the cloud of the dots. The cloud of datapoints is pretty close to each other, and we don't have one point which affects the regression line highly.
+
+#Reporting:
+##Appendix:
+#Coefficients: B0= 7.37  , B1=-0.05 
+#sE's:  (Intercept)= 0.22    Age= 0.0047 
+#T-Scores: (Intercept) <2e-16 *** Age= <2e-16 ***
+#R^2=  0.56, R= 0.75
+#p-value: < 2.2e-16
+
+
+#The final model formula was healing_rate ~ age. All main effects were very significant p-value: < 2.2e-16, and the model was highly significant overall  123.8 on 1 and 98. And achieved a high variance explanation (Multiple R-squared:  0.56,	Adjusted R-squared:  0.75). All regression coefficients as well as their standard errors, t scores and p-values are provided in the appendix. But checking of model assumptions revelead problems with linearity.
+
+
+#2b As in 1, the assumption of linearity has been violated. Again, you need to apply a regression technique that's appropriate to use when your data is curved. (HINT: HOW MANY CURVES ARE THERE IN THIS DATA??) Is your new model significant? How has R^2 changed?
+
+#We got 3 curves and because, generally, the power you want is 1 + the number of curves in your data. We use 3.
+
+model_H <- lm(healing_rate~poly(age,3), data=healingData)
+summary(model_H)
+
+#R^2=0.75
+sqrt(0.75)
+#R=0.87 (indicating a large effect)
+#R^2 Went up by alot, by 0.19.
+
+###2c Plot a curved line that corresponds to your new regression on top of a scatterplot of the data points.
+predict(model_H, newdata=data.frame(age=c(10,20,30)))
+
+healingData$PREDICTED_HEALINGRATE <- predict(model_H)
+
+ggplot(healingData, aes(age, healing_rate)) + geom_point() + geom_smooth(method="lm") + geom_line(aes(age,PREDICTED_HEALINGRATE), colour="red")
+
+
+###3a Load in uscrime.csv. This spreadsheet contains data on U.S. crime statistics in 1960 for different U.S. states. You are going to run a multiple regression (in 3b) to determine which variables predict crime. The variables in this spreadsheet include:
+#Crime: Crime rate (offenses per 100,000 people)
+#M: Percentage of males aged 14-24 in state population
+#Ed: mean years of schooling of the population aged 25 or older
+#Po1: per capita expenditure on police protection
+#U2: unemployment rate of males 35-39
+#Ineq: income inequality
+#Prob: probability of imprisonment for crime
+#LF: labor force participation rate of urban males 14-24
+#M.F: number of males per 100 females
+#NW: percentage nonwhites in population
+#Time: average time in months served vy offenders in state prisons
+
+crimeData<- read.table(file.choose(),  header = TRUE, sep="\t", comment.char="", quote="")
+
+###3b Run a multiple regression with Crime as your outcome variable and all other variables as predictors. Is the model significant? How much variance is explained in the sample? How much variance would we expect to be explained in the general population? Which predictors are significant?
+crimeReg <- lm( Crime~M +Ed + Po1 + U2 + Ineq + Prob + LF + M.F + NW +Time ,data=crimeData); crimeReg
+summary(crimeReg)
+
+
+#There was a significant relationship within the F-Ratio, p<0.001 (p-value=8.027e-09). Which tells us there is less than a 0.1% chance that an F-ratio this large would happen if the null hypothesis were true. This indicates that our regression model results in in significantly better prediction of crime, than if we used the mean value of crime. So, the regression model overall predicts crime significantly well.
+
+#The predictors can account for  77.14% of the variance in crime in this sample.
+#The predictors can account for the variance of 70.79% in crime in the population.
+# The following predictors: M  * , Ed  **, Po1  ***, Ineq *** are significant.
+
+###3c Check assumptions of the multiple regression technique (don't worry about linearity here).
+
+#Multicollinearity
+vif(crimeReg) #Largest VIF is not >10
+1/vif(crimeReg) # non below 0.1 or below 0.2
+mean(vif(crimeReg)) # 2.915987, not substantially bigger.
+#Assumption of multicollinearity holds.
+
+#Variable types: The predictor variables are measured at the interval level, equal intervals on the scale represent equal differences in the property being being measured and thus is quantative. 
+#Outcome variable is quantative, because the outcome variable is measured at the interval level, equal intervals on the scale represent equal differences in the property being being measured, increase in crime results indeed in a higher crimerate. Crime is unbounded, crime has no constraints on the variability of the outcome, crime can take all sorts of ratings between it's bounds. But crime is not continuous, it gives us a score for each entity and can't take on any value on the measurement scale that we are using, it only takes whole numbers. 
+
+#Independence: assumed it is is independent.
+
+#Residuals:
+par(mfrow =c(2,2))
+plot (crimeReg)
+
+#Normal distributed: almost all of the datapoints don't really fall nicely on the line, so it's probably not normal.
+#Homoscedasticity: this assumption doesn't hold, the datapoints do funnel out. Also it doesn't looks like a random array of dots evenly dispersed around zero. So this does indicate variance across residuals and thus does indicate heteroscedasticity. 
+
+#Auto-correlation
+durbinWatsonTest(crimeReg)
+#Statistic=  1.93461, quite  close to 2, so assumption has probably been met, so probably not correlated. P-value of Value  0.858, confirms this, it is bigger than .05, and therefore non-significant. The value however is less than 2, so indicates a positive correlation. So this assumption has been met, and thus the residuals are uncorrelated. So no autocorrelation.
+
+#Leverage points:
+dim(crimeData)
+averageCrime <- (1+10)/100; averageCrime #=  0.11 #(k+1)/n
+crimeHat <- hatvalues(crimeReg) 
+crimeHatTable<-crimeHat > 2 *  averageCrime | crimeHat > 3*   averageCrime; crimeHatTable
+table(crimeHatTable)
+#21 of the values are 2 or 3 times bigger than the ave. value, so alot of the datapoints are leverage points and are thus data-points with extreme x-values, and thus affect the data points positioning.
+#Also if you look at the graph: we have quite a alot datapoints with extreme x-values, so we have leverage points, which gives cause for concern. 
+
+#Influential points:
+cookCrime<-cooks.distance(crimeReg)
+cookCrimeTable<-cookCrime > 1; cookCrimeTable
+table(cookCrimeTable)
+#Non of the values are bigger than 1. So, there are no influential points, and thus outliers, that may affect the slope of the regression line.
+#If you also look at the graph non of the points fall in the cook's distance (but datapoint 37 almost does) and thus influence the cloud of the dots. The cloud of datapoints is pretty close to each other, and we don't have one point which affects the regression line highly.
+
+###3d Now perform model selection, removing predictors until you arrive at a final model. At each step, state which predictor you have chosen to remove and why. When you get to the final model, explain why you aren't removing any more predictors. How do multiple R^2 and adjusted R^2 change each time you remove a predictor? Why do you think you see this pattern?
+
+#Before:
+#The predictors can account for  77.14% of the variance in crime in this sample.
+#The predictors can account for the variance of 70.79% in crime in the population.
+
+drop1(crimeReg,   test="F")
+#AIC of model=511.66
+#We want to look for the predictor that (1) shows the largest drop in AIC, and (2) is the most non-significant: Which is Time, because it has the lowest AIC (509.7) and is the most non-significant (P-value= 0.8668364  ).
+
+crimeReg.2 <-  lm(  Crime~M +Ed + Po1 + U2 + Ineq + Prob + LF + M.F + NW,  data=crimeData); crimeReg.2
+summary(crimeReg.2)
+
+#R^2 is now 77.12% and adjusted R-Squared is now 71.56% , removing the predictor didn't really dropped those values, so this is good. 
+
+drop1(crimeReg.2,   test="F")
+#AIC of model=509.70 
+#We want to look for the predictor that (1) shows the largest drop in AIC, and (2) is the most non-significant: Which is LF, because it has the lowest AIC (507.74) and is the most non-significant (P-value= 0.8597087).
+
+crimeReg.3 <-  lm(  Crime~M +Ed + Po1 + U2 + Ineq + Prob + M.F + NW,  data=crimeData); crimeReg.3
+summary(crimeReg.3)
+
+#R^2 is now 77.1% and adjusted R-Squared is now 72.28% , removing the predictor didn't really dropped those values, so this is good. 
+
+drop1(crimeReg.3,   test="F")
+#AIC of model=507.74 
+#We want to look for the predictor that (1) shows the largest drop in AIC, and (2) is the most non-significant: Which is NW , because it has the lowest AIC (505.87) and is the most non-significant (P-value= 0.7450160  ).
+
+crimeReg.4<-  lm(  Crime~M +Ed + Po1 + U2 + Ineq + Prob + M.F,  data=crimeData); crimeReg.4
+summary(crimeReg.4)
+
+#R^2 is now 77.04% and adjusted R-Squared is now 72.91% , removing the predictor didn't really dropped those values, so this is good. 
+
+drop1(crimeReg.4,   test="F")
+#AIC of model=505.87
+#We want to look for the predictor that (1) shows the largest drop in AIC, and (2) is the most non-significant: Which is M.F , because it has the lowest AIC (504.79) and is the most non-significant (P-value=  0.387499).
+
+crimeReg.5<-  lm(  Crime~M +Ed + Po1 + U2 + Ineq + Prob,   data=crimeData); crimeReg.5
+summary(crimeReg.5)
+
+#R^2 is now 76.59% and adjusted R-Squared is now 73.07% , removing the predictor didn't really dropped those values, so this is good. 
+
+drop1(crimeReg.5,   test="F")
+#AIC of model=504.79
+#We want to look for the predictor that (1) shows the largest drop in AIC, and (2) is the most non-significant: but non of our variables fit those constraints, so we have reached our final model. If we now remove more variables, we would see a significant drop in R^2 and adjusted R^2, indicating that the variable is of actual influence on predicting the data.
+crimeReg.final<-  lm(  Crime~M +Ed + Po1 + U2 + Ineq + Prob,   data=crimeData); crimeReg.final
+summary(crimeReg.final)
+
+#General pattern: R^2 went a bit down, and Adjusted R^2 went a bit up. R^2 went a bit down, because an extra variable always explains some random variance, and thus when we remove it we take this "extra bit of variance" away. And adjusted R^2 went even a bit up, because we dropped a variable and thus we have taken away a bit of the "penalty" for adding an extra variable.
+
+###3e Refer back to what each predictor variable name means as described in the instructions for exercise 3a. Provide a description of the different societal factors that predict crime rate in U.S. states (what I mean is don't just list the variable names from the spreadsheet, but actually say what they refer to and how they relate to crime rate). Describe the direction of the relationship between each of these factors and crime rate.
+
+#M: Percentage of males aged 14-24 in state population. According to the data the amount of males was a bit significant (*) and thus predicting some variance in crimerate. Thus the amount of males between ages 14-24 have a positive effect on the crime rate. An increase in the amount of males between those ages in a population, will thus results in a slightly higher crime rate. This refers to the hypothesis, that men are more likely to commit crimes than women.
+
+#Ed: mean years of schooling of the population aged 25 or older. According to the date the amount of schooling was pretty significant (**), and thus predicting quite some variance in crimeration. This results in the conclusion that schooling has a positive effect on crimerate. The more years people are schooled the more crimes are commited, and thus a population in which the schooling years are low, will result in a lower crime rate. This refers to the hypothesis, that a more educated population can most of the time find easier good wage jobs, resulting in a low crime rate, which this data contradicts.
+
+#Po1: per capita expenditure on police protection. This was one was highly significant (***) and thus predicting alot of the variance in crime rate. Indicating that the more budget spend on the police results in a higher crime rate. This leads to the conclusion, that crimerate is quite heaviliy dependent on the state of the police within the population. The more money is spend on police, results in a higher crimerate, which indicates a postive relationship. This refers to the hypothesis, that a more present, trained and better equiped police, will lead to a harsher police action and probably more documentation in crimes, and thus to higher crimerates.
+
+#U2: unemployment rate of males 35-39. In the first model U2 was almost significant and in the final model it is (*). Which indicates that the unemployment rate of males ageing 35 to 39 explain some of the variance within crimerates. And thus the higher the amount of unemployment of males of 35-39 years the higher the crime rate is, resulting in the conclusion that there is a positive relationship between the two. This refers to the hypothesis, that when a lot of people are unemployed and thus cannot provide properly for their family, that their are more tempted to find other and illegal ways to provide for their family.
+
+#Ineq: income inequality. Income equality was highly significant (***). Which indicates, that the amount of income equality explains a lot of the variation in crime rates. Thus the more inequal the incomes are, the more crimes are commited, which indicates a positive relationship. This refers to the hypothesis, that if there is a big gap between the poor and the rich people, that the poor people are more likely to commit crimes out of their sense of unfairness (against rich people).
+
+#Prob: probability of imprisonment for crime.  In the first model, Prob was almost significant, in the final model Prob is significant (*). And thus explains a bit of the variance of crimerates. The probability of imprisonment thus has some influence on crimerates. When the probability is higher that your are going to be improsined for a crime, less crimes were commited, indicating a negative relationship. This refers to the idea, that a harsher punishment of crime will result in lower crimerates, because people are less tempted to commit a crime, since the effects of their deeds may be less favourable.
+
+#LF: labor force participation rate of urban males 14-24: This predictor was dropped as second, because LF also had a very low AIC and highly significance. Thus, it's also quite safe to say, that this predictor variable has almost none influence on crimerates. The higher the labor force partictipation in the population doesn't necessarily result in a lower crime rate, indicating there is no relation between the two, because it doesn't predict alot of the variance.  This refers to the idea, that again if there are more people employed, they are less likely to commit crimes, because the need to do it is lower, because they already can provide for themselves and their family.
+
+#M.F: number of males per 100 females: dropped. This predictor variable has been dropped as last, because it didn't fufill the requirements of the drop.test. This leads to the conclusion, that higher the amount of male to female ratio is, and thus the more males are present in the population doesn't necessarily result in higher crimerates, because it doesn't predict alot of the variance, indicating there is no relation between the two.  . This also refers to the idea that males are more likely to commit crimes than females. 
+
+#NW: percentage nonwhites in population: dropped. This predictor variable has been dropped at second last, because it didn't fufill the requirements of the drop.test. This leads to the conclusion, that the more nonwhite people are present in the population, doesn't necessarily result in a higher crimerate, because it doesn't predict alot of the variance, indicating there is no relation between the two. This refers to the idea, that non white people are dominant in the crimerates, and thus the more nonwhite people are present within a population, the higher the crimerate.
+
+#Time: average time in months served vy offenders in state prisons: This predictor was dropped as first, because of it's very low AIC and highly significance. Thus, it's quite safe to say, that this predictor variable has almost none influence on crimerates. The higher the average time of a vy offender in jail, doesn't result in a lower crime rate, indicating there is no relation between the two, because it doesn't predict alot of the variance.This also refers to the idea that a harsher punishment of crime, leads to a lower crimerate.
+
+###3f The directions of several of the relationships you described in 3e make some sense. However, a couple are very strange. First, it is strange that, as per capita expenditure on police protection increases, so does crime rate. What does this relationship suggest about causality between predictors and outcome variables in observational studies like this one?
+
+#That certain expected causalities between predictors and outcome variables, can be contradicted by your data. And that, the likelihood that another (3th) variable is inplay, explaining the ralation between the two becomes higher. But, to a certain point this observation however makes inuitively sense, because the more money is spend on the police force, the more crimes are documented and thus dealt with, resulting in a "higher crime rate" in the population.
+
+###3g Another strange relationship is the positive one between number of years of schooling in the population and crime rate. Do you think there is a direct relationship between these two?
+#Honestly no, you would expect a negative relationship between the two, that the more years people are schooled the less likely they are to commit crimes. But, the other way around doesn't seem inuitively very likely.
+
+###4a load in mtcars.csv (set row.names=1 in the read.table function). You've worked with this data before; it describes characteristics of different cars. Perform a multiple regression, predicting mpg (miles per gallon, which is a measure of fuel efficiency) based on the following predictors:
+#cyl: number of cylinders in the engine (a cylinder is an engine component where power is created)
+#disp: size of engine
+#hp: horsepower (how powerful the engine is)
+#wt: the weight of the car.
+
+mtCarsData<- read.table(file.choose(),  header = TRUE, sep="\t", comment.char="", quote="", row.names=1 )
+
+
+###4b Is the model significant? How much variance in the sample is explained? How much variance in the population would we expect to be explained? Which predictors are significant?
+mtCarsReg <- lm( mpg~cyl+disp+hp+wt,data=mtCarsData); mtCarsReg
+summary(mtCarsReg)
+
+
+#There was a significant relationship within the F-Ratio, p<0.001 (p-value=1.061e-10). Which tells us there is less than a 0.1% chance that an F-ratio this large would happen if the null hypothesis were true. This indicates that our regression model results in in significantly better prediction of mpg, than if we used the mean value of mpg. So, the regression model overall predicts mpg significantly well.
+
+#The predictors can account for 84.86% of the variance in mpg in this sample.
+#The predictors can account for the variance of 82.62% in mpg in the population.
+#The following predictor: wt, is significant.
+
+
+###4c Test the model assumptions. Are any of them violated?
+#Multicollinearity
+vif(mtCarsReg) #Largest VIF (disp) is  >10. Which indicates a violation of the assumption.
+1/vif(mtCarsReg) # disp is below 0.1 which indicates serious problems  and cycle is below 0.2 which indicates concerns. And wt is also almost below 0.2, which gives also cause for concern.
+mean(vif(mtCarsReg)) # 6.341248, is definitely substantially bigger than 1.
+#Assumption of multicollinearity doesn't hold, so the predictors do correlate highly.
+
+#Variable types: The predictor variables are measured at the interval level, equal intervals on the scale represent equal differences in the property being being measured and thus is quantative. 
+#Outcome variable is quantative, because the outcome variable is measured at the interval level, equal intervals on the scale represent equal differences in the property being being measured, increase in mpg results indeed in a more miles per gallon. Mpg is unbounded, mpg has no constraints on the variability of the outcome, mpg can take all sorts of ratings between it's bounds. Mpg is continuous, it gives us a score for each entity and can take on any value on the measurement scale that we are using, mpg doesn't only takes whole numbers. 
+
+#Independence: assumed it is is independent.
+
+#Residuals:
+par(mfrow =c(2,2))
+plot (mtCarsReg)
+
+#Normal distributed: almost all of the datapoints fall nicely on the line, so it's probabl normal.
+#Homoscedasticity: this assumption does hold, the datapoints don't funnel out. Also it does looks like a random array of dots evenly dispersed around zero. So this doesn't indicate variance across residuals and thus doesn't indicate heteroscedasticity. 
+
+#Auto-correlation
+durbinWatsonTest(mtCarsReg)
+#Statistic=  1.685003, not quite  close to 2, so assumption has perhaps been met, so probably not correlated. P-value of Value   0.182, confirms this, it is bigger than .05, and therefore non-significant. The value however is less than 2, so indicates a positive correlation. So this assumption has been met, and thus the residuals are uncorrelated. But the low statistic and p-value do indicate some amount of autocorrelation.
+
+#Leverage points:
+dim(mtCarsData)
+averageMTCAR <- (1+4)/32; averageMTCAR #=  0.16 #(k+1)/n
+MTCARHat <- hatvalues(mtCarsReg) 
+MTCARHatTable<-MTCARHat > 2 *  averageMTCAR | MTCARHat > 3*   averageMTCAR; MTCARHatTable
+table(MTCARHatTable)
+#1 of the values are 2 or 3 times bigger than the ave. value, so almost none the datapoints are leverage points and are thus data-points with extreme x-values, and thus affect the data points positioning.
+#Also if you look at the graph: we have one datapoint with an extreme x-value, so we have one leverage point, which doesn't gives cause for concern. 
+
+#Influential points:
+cookMTCAR<-cooks.distance(mtCarsReg)
+cookMTCARTable<-cookMTCAR > 1; cookMTCARTable
+table(cookMTCARTable)
+#Non of the values are bigger than 1. So, there are no influential points, and thus outliers, that may affect the slope of the regression line.
+#If you also look at the graph non of the points fall in the cook's distance (but datapoint 37 almost does) and thus influence the cloud of the dots. The cloud of datapoints is pretty close to each other, and we don't have one point which affects the regression line highly.
+
+#So the assumption of multicollinearity doesn't hold, the predictors do correlate with each other, which gives alot of cause for concern.
+
+
+###4d Run the drop1() function on your regression model. Which predictor would be the best one to drop? Which would be the second best to drop? Why?  (don't actually drop them!)
+
+#Before:
+#The predictors can account for 84.86% of the variance in mpg in this sample.
+#The predictors can account for the variance of 82.62% in mpg in the population.
+
+drop1(mtCarsReg,   test="F")
+#AIC of model=63.526 
+#We want to look for the predictor that (1) shows the largest drop in AIC, and (2) is the most non-significant: Which is disp, because it has the lowest AIC (62.665) and is the most non-significant (P-value= 0.3313856  ).
+
+mtCarsReg.2 <-  lm( mpg~cyl+hp+wt,data=mtCarsData); mtCarsReg.2
+summary(mtCarsReg.2)
+
+#R^2 is now 84.31% and adjusted R-Squared is now 82.63% , removing the predictor didn't really dropped those values, so this is good.
+
+drop1(mtCarsReg.2,   test="F")
+#AIC of model=62.665
+#We want to look for the predictor that (1) shows the largest drop in AIC, and (2) is the most non-significant: But non of the predictor variables fulfill these requirements. Al though hp comes the closest. Because it has the lowest AIC out of the 3 which is almost lower than the model AIC (63.198) and has a pretty high P-value= 0.1400152, and thus is non-significant (>0.05).
+
+mtCarsReg.3 <-  lm( mpg~cyl+wt,data=mtCarsData); mtCarsReg.3
+summary(mtCarsReg.3)
+
+#R^2 is now 83.02% and adjusted R-Squared is now 81.85% , removing the predictor didn't really dropped those values, so this is good.
+
+
+###4e Now you're going to run 2 simple regressions: one predicting mpg as a function of disp, and a second predicting mpg as a function of hp. Are these models significant?
+mtCarsReg.D <-  lm( mpg~disp,data=mtCarsData); mtCarsReg.D
+summary(mtCarsReg.D)
+
+#P-value= 9.38e-10. Which is lower than 0.05, so significant.
+
+
+mtCarsReg.H <-  lm( mpg~hp,data=mtCarsData); mtCarsReg.H
+summary(mtCarsReg.H)
+#p-value= 1.788e-07. Which is lower than 0.05, so signifcant.
+
+
+###4f How do disp and hp behave differently in 4d versus 4e? Why do you think this is? (consider what assumption was violated in 4c. It may also help to think back to partial correlations.)
+
+#In 4D, disp and HP are both significant wrt to mpg. While they weren't in 4e, this was probably due the violation of the assumption of multicollinearity, which indicated that those two variables were correlated, and thus resulted in an equal explanation of variance in the outcome, which results in a higher p-value and thus in more likelihood of being non-significant. When we took away this correlation between the two predictor variables, by testing individually, we clearly saw that they were significant, because now the correlation between the two variables wasn't anymore in play, and thus the assumption of multicollinearity wasn't violated anymore, because there is no multicollinearity in simple regression.

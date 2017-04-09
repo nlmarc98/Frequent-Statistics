@@ -16,9 +16,12 @@ summary(babyModel)
 #How much variance explained in the sample data:
 #Multiple R-squared:  0.7511 so 7,5% of the variance is explained
 
+ddata <- datadist(read_baby)
+options(datadist="ddata")
+
 #Then we create our model object and print it to the screen
 modelbaby <- lrm(Orangeness~Carrots, data=read_baby); modelbaby
-#????????KOMEN HELE GEKKE GETALLEN UIT!!
+#The slope is 0.1768. So there is a positive relationship/direction.
 
 ###1b Now check assumptions. 
 par(mfrow =c(1,1))
@@ -79,6 +82,7 @@ summary(healingModel)
 
 #Then we create our model object and print it to the screen
 modelHealing <- lrm(healing_rate~age, data=read_healing); modelHealing
+# There is a negative relationship/direction because the slope is negative: -0.0921.
 
 #Now check assumptions. 
 par(mfrow =c(1,1))
@@ -116,10 +120,10 @@ summary(modelagecurved)
 ###2c Plot a curved line that corresponds to your new regression on top of a scatterplot of the data points.
 predict(modelagecurved, newdata=data.frame(age=c(10,20,30)))
 
-read_baby$PREDICTED_HEALING_RATE<- predict(modelagecurved)
+read_baby$predicted_healing_rate<- predict(modelagecurved)
 head(read_healing)
 
-ggplot(read_healing, aes(age, healing_rate)) + geom_point() + geom_smooth(method="lm") + geom_line(aes(age,PREDICTED_HEALING_RATE, colour="red"))
+ggplot(read_healing, aes(age, healing_rate)) + geom_point() + geom_smooth(method="lm") + geom_line(aes(age, predicted_healing_rate, colour="red"))
 
 
 ###3a Load in uscrime.csv. This spreadsheet contains data on U.S. crime statistics in 1960 for different U.S. states. You are going to run a multiple regression (in 3b) to determine which variables predict crime. The variables in this spreadsheet include:
@@ -157,19 +161,149 @@ summary(crimeModel)
 
 ###3c Check assumptions of the multiple regression technique (don't worry about linearity here).
 
+#Now check assumptions. 
+par(mfrow =c(2,2))
+plot (crimeModel)
+#No straight line, so not normal distributed.
+
+#Homoscedasticity: this assumption does hold, the datapoints don't really funnel out, so this doesn't indicate variance across residuals and doesn't indicate heteroscedasticity. 
+
+durbinWatsonTest(crimeModel)
+#Statistic= 1.93461, very close to 2, so assumption has probably been met, so probably not correlated. P-value of Value 0.798 confirms this, it is bigger than .05, and therefore not-significant. The value however is less than 2, so indicates a positive correlation. So this assumption has not  been met, and thus the residuals are correlated. 
+
+#Leverage points:
+#High leverage and/or highly influential points, and any problems they might be causing.
+hatvalues(crimeModel)
+#There are high leverage points, there are points which pull the line downwards or upwards, like the points with the numbers 11, 29 and 37 next to them.
+cooks.distance(crimeModel)
+cookChild<-cooks.distance(crimeModel)
+cookChildTable<-cookChild> 1; cookChildTable
+table(cookChildTable)
+#Non of the values are bigger than 1. So, there are no influential points, and thus outliers, that may affect the slope of the regression line.
+#No dots lie beneath the cook line. There are no highly influential points.
 
 
 ###3d Now perform model selection, removing predictors until you arrive at a final model. At each step, state which predictor you have chosen to remove and why. When you get to the final model, explain why you aren't removing any more predictors. How do multiple R^2 and adjusted R^2 change each time you remove a predictor? Why do you think you see this pattern?
 
+crimeModel <- lm(Crime~M + Ed + Po1 + LF + M.F + NW + U2 + Ineq + Prob + Time, data=read_crime)
+summary(crimeModel)
+#Without removing predictors:
+#P-value:  8.027e-09
+#Multiple R-squared:  0.7714,	Adjusted R-squared:  0.7079 
 
-###3e Refer back to what each predictor variable name means as described in the instructions for exercise 3a. Provide a description of the different societal factors that predict crime rate in U.S. states (what I mean is don't just list the variable names from the spreadsheet, but actually say what they refer to and how they relate to crime rate). Describe the direction of the relationship between each of these factors and crime rate.
+#To know which predictor to drop, we use the drop function: 
+drop1(crimeModel, test="F")
+#We search for the highest drop in AIC. We drop that predictor with the highest drop.
+
+#We remove the predictor: Time, because it has the lowest AIC: 509.70
+crimeModel <- lm(Crime~M + Ed + Po1 + LF + M.F + NW + U2 + Ineq + Prob, data=read_crime)
+summary(crimeModel)
+#P-value:  2.091e-09
+#Multiple R-squared:  0.7712,	Adjusted R-squared:  0.7156
+
+drop1(crimeModel, test="F")
+
+#We remove the predictor: LF, because it has the lowest AIC: 507.74
+
+crimeModel <- lm(Crime~M + Ed + Po1 + M.F + NW + U2 + Ineq + Prob, data=read_crime)
+summary(crimeModel)
+#P-value:  5.066e-10
+#Multiple R-squared:  0.771,	Adjusted R-squared:  0.7228 
+
+drop1(crimeModel, test="F")
+#We remove the predictor: NW, because it has the lowest AIC: 505.87
+
+crimeModel <- lm(Crime~M + Ed + Po1 + M.F + U2 + Ineq + Prob, data=read_crime)
+summary(crimeModel)
+#P-value:  1.173e-10
+#Multiple R-squared:  0.7704,	Adjusted R-squared:  0.7291  
+
+drop1(crimeModel, test="F")
+#We remove the predictor: M.F, because it has the lowest AIC: 504.79
+
+crimeModel <- lm(Crime~M + Ed + Po1 + U2 + Ineq + Prob, data=read_crime)
+summary(crimeModel)
+#P-value:  3.418e-11
+#Multiple R-squared:  0.7659,	Adjusted R-squared:  0.7307
+
+
+drop1(crimeModel, test="F")
+#We remove the predictor: U2, because it has the lowest AIC: 508.08
+
+crimeModel <- lm(Crime~M + Ed + Po1+ Ineq + Prob, data=read_crime)
+summary(crimeModel)
+#P-value:  5.926e-11
+#Multiple R-squared:  0.7379,	Adjusted R-squared:  0.706
+#This is a really big drop in multiple r-squared and adjusted r-squared so we should not drop this one. We should stop here!
+
+#So the final model is: crimeModel <- lm(Crime~M + Ed + Po1 + U2 + Ineq + Prob, data=read_crime)
+#The predictors: time, LF, NW, M.F are dropped. We stopped with dropping because the multiple r-squared and adjusted r-squared dropped to much after removing the next worst predictor.
+
+#To summarise the changes in multiple r-squared and adjusted r-squared:
+#Before removing:   Multiple R-squared:  0.7714,	Adjusted R-squared:  0.7079 
+#Time               Multiple R-squared:  0.7712,	Adjusted R-squared:  0.7156
+#LF                 Multiple R-squared:  0.771,	Adjusted R-squared:  0.7228 
+#NW                 Multiple R-squared:  0.7704,	Adjusted R-squared:  0.7291  
+#M.F                Multiple R-squared:  0.7659,	Adjusted R-squared:  0.7307
+#
+#If we also removed U2, but we didn't because the drop would be too much: 
+#                   Multiple R-squared:  0.7379,	Adjusted R-squared:  0.706
+#
+#SO the multiple r-squared dropped a little every time we removed a predictor. The adjusted r-squared got a little higher every time we removed a predictor.
+#The multiple r-squared dropped a little every time we removed a predictor because even if the predictor doesn't have a influence, due trough random correlation happenening, when you add more predictors, a bit more variance can always be explained. 
+#Same explaination as by R^2, only now with the population instead of a sample.
+
+
+###3e Refer back to what each predictor variable name means as described in the instructions for exercise 3a. Provide a description of the different societal factors that predict crime rate in U.S. states (what I mean is don't just list the variable names from the spreadsheet, 
+#but actually say what they refer to and how they relate to crime rate). Describe the direction of the relationship between each of these factors and crime rate.
+
+ddata <- datadist(read_crime)
+options(datadist="ddata")
+
+#Then we create our model object and print it to the screen
+modelDataCrime <- lrm(Crime~M + Ed + Po1 + LF + M.F + NW + U2 + Ineq + Prob + Time, data=read_crime); modelDataCrime
+#With this lrm, we can see what the directions of the relationships are. They are stated at each predictor.
+
+#M: The m refers to the percentage of males aged 14-24 in state population. I would assume that that is a age group in males in which the most crimes are committed. "Criminologists have long recognized that age is a very robust predictor of crime, both in the aggregate and for individuals. The most common finding across countries, groups, and historical periods shows that crime tends to be a young persons' activity" (http://www.encyclopedia.com/law/legal-and-political-magazines/age-and-crime) This statement confirmes what I assumed.
+#Direction of the relationship: slope is 1.1574. So a positive relationship.
+
+#Ed: The Ed refers to the mean years of schooling of the population aged 25 or older. If someone with an age of 25 or older has had a very few years of schooling, the probability that that person would commit a crime is probably bigger than for a person who has had more years of schooling and can make ends meet. That person with more schooling can probably buy enough food and doesn't have to steal food for example. This assumption can be confirmed with the outcomes of a swedish study: "The more time that young men stay in school, the less likely they are to turn to crime at any point in their lives."(http://www.res.org.uk/details/mediabrief/8356461/MORE-EDUCATION-LESS-CRIME-Swedish-evidence-of-the-impact-of-years-of-schooling-o.html)
+#Direction of the relationship: slope is 1.1064. So a positive relationship.
+
+#Po1: The PO1 referse to the per capita expenditure on police protection. I would assume that the more money is used for police protection in a place, the less crime would take place because the crime can be prevented with the use of that money. So less crime would take place. A paper from Ben Shoesmith confirms this "Arrest rates impact every member of a population because if arrest rates go up, then the probability that criminals are incarcerated increases. An increase in arrest rates increases the opportunity cost of committing a crime and therefore can be considered a crime deterrent." (http://uncw.edu/csurf/Explorations/documents/BenShoesmith.pdf).
+#Direction of the relationship: slope is 1.1064. So a positive relationship. (explained at 3f)
+
+#U2: The U2 refers unemployment rate of males 35-39. I would assume that if the males (aged 35-39) are unemployed, they would be more likely to commit a crime because the could for example really need to have money to buy for example food. A paper from Raluca-Ana-Maria comfirmes this "Unemployment is a criminal factor because the person is marked by the deterioration of living standards, its emotional structure becomes unstable, the family is affected and the person can not control their desires and in this context is influenced to commit crimes" (https://ideas.repec.org/a/ssm/journl/tome9y2012i1(9)p67-86.html).
+#Direction of the relationship: slope is 1.0200. So a positive relationship.
+
+#Ineq: The Ineq refers to the income inequality. I would assume that if there is a income inequality, people can become aggravated because of it which will result in more crime. "North American and international analyses validate the relationship between income inequality and (violent) crime." (https://www.equalitytrust.org.uk/sites/default/files/Income%20Inequality%20and%20Crime%20-%20A%20Review%20and%20Explanation%20of%20the%20Time%20series%20evidence_0.pdf)
+#Direction of the relationship: slope is 0.5854. So a positive relationship.
+
+#Prob: The Prob refers to the probability of imprisonment for crime. I would assume that if someone has a high probability of imprisonment for crime, this would of course result in more crime. Research described by Zack Beauchamp made clear that:  "Young offenders who were incarcerated were a staggering 67 percent more likely to be in jail (again) by the age of 25 than similar young offenders who didn’t go to prison."(https://thinkprogress.org/study-throwing-kids-in-jail-makes-crime-worse-ruins-lives-f67672a65637) Which confirmes what I assumed. 
+#Direction of the relationship: slope is -36.0655. SO a negative relationship. So if there is a high probability of imprisonment for crime, this results in a low crime rate. This is weird. An explanation is at 3f.
+
+#LF: The LF refers to the labor force participation rate of urban males 14-24. The labor force participation rate is the rate of the population that is either employed or unemployed. I would assume that if there is a bigger percentage which is employed, there will be a lower amount of crime then when there are more unemployed people. This is like the U2 case. A paper by Tadashi Yamada confirms what I assumed: "An increase in the unemployment rate overclearly triggers a subsequent increase in all the crime rates,whose peaks are reached within a few years." (http://www.nber.org/papers/w1782).
+#Direction of the relationship: the slope is 5.6073. So a positive relationship.
+
+#M.F: The M.F. refers to the number of males per 100 females. I would assume that males are more likely to commit crimes than females. And therefore if the number of males is larger, this would result in a higher crime rate than if the number of males is smaller. A study was described by C.N. Trueman "According to a self-report study, women were less likely than men to have offended and commited a crime in the last year (11% compared with 26%)." (http://www.historylearningsite.co.uk/sociology/crime-and-deviance/women-and-crime/) So this confirmes what I assumed. 
+#Direction of the relationship: the slope is -0.0079. So a negative relationship.
+
+#NW: The NW refers to the percentage nonwhites in population. I do not know if nonwhite people are more likely to commit crimes than white people in the population. Edwin S. Rubenstein stated that: "There are dramatic race differences in crime rates. Asians have the lowest rates, followed by whites, and then Hispanics. Blacks have notably high crime rates. This pattern holds true for virtually all crime categories and for virtually all age groups." (https://www.amren.com/archives/reports/the-color-of-crime-2016-revised-edition/). So a lower percentage of nonwhites in population will probably result in a higher crime rate.
+#Direction of the relationship: the slope is 0.0180. So a really small positive relationship. 
+
+#Time: The Time refers to the average time in months served by offenders in state prisons. I would assume that if someone has served more time in state prisons, this would result in a lower crime rate in the future. Toby Helm and Jamie Doward stated that "Longer prison terms really do cut crime, study shows.". This confirmes what I assumed (https://www.theguardian.com/law/2012/jul/07/longer-prison-sentences-cut-crime?newsfeed=true).
+#Direction of the relationship: the slope is -0.0543. So a negative relationship.
+
 
 
 ###3f The directions of several of the relationships you described in 3e make some sense. However, a couple are very strange. First, it is strange that, as per capita expenditure on police protection increases, so does crime rate. What does this relationship suggest about causality between predictors and outcome variables in observational studies like this one?
 
+#A weakness of most observational studies is that some members of the sample which are used have opted for certain values of the explanatory variable while others have opted for other values. It could for example be that those individuals may be different in additional ways that would also play a role in the 'response of interest'. There may be more variables which play a role. And causation does not mean correlation. This could also be the problem with as per capita expenditure on police protection increases, so does crime rate.
 
+ 
 ###3g Another strange relationship is the positive one between number of years of schooling in the population and crime rate. Do you think there is a direct relationship between these two?
 
+#No I do not think there is a direct relationship between number of years of schooling in the population and crime rate. Because you would think that is you had more years of schooling, you would have a better degree and therefore in the most cases a better job and get paid better. And if you get paid better, you would be less likely to commit a crime (because a lot of crimes happen because people want money). But maybe there exists a indirect relationship like if you had a lot of years of schooling, in the US, you could have a really big study dept and are mad at the 'system' and therefore commit for example hate crimes. 
 
 
 ###4a load in mtcars.csv (set row.names=1 in the read.table function). You've worked with this data before; it describes characteristics of different cars. Perform a multiple regression, predicting mpg (miles per gallon, which is a measure of fuel efficiency) based on the following predictors:
@@ -241,4 +375,5 @@ summary(carModel3)
 
 ###4f How do disp and hp behave differently in 4d versus 4e? Why do you think this is? (consider what assumption was violated in 4c. It may also help to think back to partial correlations.)
 
-#Disp and hp are significant in 4e but not in 4d.
+#Disp and hp are significant in 4e but not in 4d. The most non-significant predictors are dropped. In carModel2 is among others hp dropped. This was a "not significant" predictor. So if that one is removed. The model is more likely to be significant. And this is also the case for carModel3. Is amoung others disp is dropped, which was a "non significant" prdicter, the model is more likely to be significant. 
+

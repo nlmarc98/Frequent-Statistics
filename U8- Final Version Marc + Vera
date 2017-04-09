@@ -1,5 +1,6 @@
 library(car)
 library(ggplot2)
+library (rms)
 
 #Marc Verwoert s4718801
 #Vera Tukke s4766970
@@ -19,6 +20,7 @@ carrotR<- sqrt(0.7511);carrotR
 graphBaby<- ggplot(babyData, aes(Carrots, Orangeness))
 graphBaby + geom_point() + labs(x = "Carrots", y = "Orangeness") + geom_smooth(method = "lm", colour = "Red")
 #The slope of the graph, indicates a positive relationship between the amount of carrots eaten and orangeness. When Carrots increases, Orangeness does as well.
+#B1=7.85 and thus indicating a positive relationship, confirms this.
 
 ###1b Now check assumptions. 
 #Variable types: The predictor variable is measured at the interval level, equal intervals on the scale represent equal differences in the property being being measured and thus is quantative. An increase in Carrots indeed results in more carrots being eaten.
@@ -110,6 +112,8 @@ HealingR<- sqrt(0.56);HealingR
 graphHealing<- ggplot(healingData, aes(age, healing_rate))
 graphHealing + geom_point() + labs(x = "age", y = "healing_rate") + geom_smooth(method = "lm", colour = "Red")
 #The slope of the graph, indicates a negative relationship between someone's age and healing_rate. When age increases, healing_rate decreases.
+#B1= -0.052480 and thus inidcating a negative relationship, confirms this.
+
 
 #Variable types: The predictor variable is measured at the interval level, equal intervals on the scale represent equal differences in the property being being measured and thus is quantative. An increase in age indeed results in more years lived.
 #Outcome variable is quantative, because the outcome variable is measured at the interval level, equal intervals on the scale represent equal differences in the property being being measured, increase in healing_rate results indeed in an increase of healing_rate. Healing_rate is unbounded, healing_rate has no constraints on the variability of the outcome, healing_rate can take all sorts of ratings between it's bounds. And healing_rate is continuous, it gives us a score for each entity and can take on any value on the measurement scale that we are using, and not only whole numbers. 
@@ -295,25 +299,65 @@ summary(crimeReg.final)
 
 ###3e Refer back to what each predictor variable name means as described in the instructions for exercise 3a. Provide a description of the different societal factors that predict crime rate in U.S. states (what I mean is don't just list the variable names from the spreadsheet, but actually say what they refer to and how they relate to crime rate). Describe the direction of the relationship between each of these factors and crime rate.
 
-#M: Percentage of males aged 14-24 in state population. According to the data the amount of males was a bit significant (*) and thus predicting some variance in crimerate. Thus the amount of males between ages 14-24 have a positive effect on the crime rate. An increase in the amount of males between those ages in a population, will thus results in a slightly higher crime rate. This refers to the hypothesis, that young men are more likely to commit crimes than women.
+#M: Percentage of males aged 14-24 in state population. According to the data the amount of males was a bit significant (*) and thus predicting some variance in crimerate. Thus the amount of males between ages 14-24 have a positive effect on the crime rate. An increase in the amount of males between those ages in a population, will thus results in a slightly higher crime rate. Which indicates a positive relationship, b1 confirms this.This refers to the hypothesis, that young men are more likely to commit crimes than women.
 
-#Ed: mean years of schooling of the population aged 25 or older. According to the date the amount of schooling was pretty significant (**), and thus predicting quite some variance in crimeration. This results in the conclusion that schooling has a positive effect on crimerate. The more years people are schooled the more crimes are commited, and thus a population in which the schooling years are low, will result in a lower crime rate. This refers to the hypothesis, that a more educated population can most of the time find easier good wage jobs, resulting in a low crime rate, which this data contradicts.
+#Ed: mean years of schooling of the population aged 25 or older. According to the date the amount of schooling was pretty significant (**), and thus predicting quite some variance in crimeration. B1 is positve, this results in the conclusion that schooling has a positive effect on crimerate. The more years people are schooled the more crimes are commited, and thus a population in which the schooling years are low, will result in a lower crime rate. This refers to the hypothesis, that a more educated population can most of the time find easier good wage jobs, resulting in a low crime rate, which this data contradicts.
 
-#Po1: per capita expenditure on police protection. This was one was highly significant (***) and thus predicting alot of the variance in crime rate. Indicating that the more budget spend on the police results in a higher crime rate. This leads to the conclusion, that crimerate is quite heaviliy dependent on the state of the police within the population. The more money is spend on police, results in a higher crimerate, which indicates a postive relationship. This refers to the hypothesis, that a more present, trained and better equiped police, will lead to a harsher police action and probably more documentation in crimes, and thus to higher crimerates.
+#Po1: per capita expenditure on police protection. This was one was highly significant (***) and thus predicting alot of the variance in crime rate.  B1 is positve, indicating that the more budget spend on the police results in a higher crime rate. This leads to the conclusion, that crimerate is quite heaviliy dependent on the state of the police within the population. The more money is spend on police, results in a higher crimerate, which indicates a postive relationship. This refers to the hypothesis, that a more present, trained and better equiped police, will lead to a harsher police action and probably more documentation in crimes, and thus to higher crimerates.
 
-#U2: unemployment rate of males 35-39. In the first model U2 was almost significant and in the final model it is (*). Which indicates that the unemployment rate of males ageing 35 to 39 explain some of the variance within crimerates. And thus the higher the amount of unemployment of males of 35-39 years the higher the crime rate is, resulting in the conclusion that there is a positive relationship between the two. This refers to the hypothesis, that when a lot of people are unemployed and thus cannot provide properly for their family, that their are more tempted to find other and illegal ways to provide for their family.
+#U2: unemployment rate of males 35-39. In the first model U2 was almost significant and in the final model it is (*).  B1 is positve, which indicates that the unemployment rate of males ageing 35 to 39 explain some of the variance within crimerates. And thus the higher the amount of unemployment of males of 35-39 years the higher the crime rate is, resulting in the conclusion that there is a positive relationship between the two. This refers to the hypothesis, that when a lot of people are unemployed and thus cannot provide properly for their family, that their are more tempted to find other and illegal ways to provide for their family.
 
 #Ineq: income inequality. Income equality was highly significant (***). Which indicates, that the amount of income equality explains a lot of the variation in crime rates. Thus the more inequal the incomes are, the more crimes are commited, which indicates a positive relationship. This refers to the hypothesis, that if there is a big gap between the poor and the rich people, that the poor people are more likely to commit crimes out of their sense of unfairness (against rich people).
 
-#Prob: probability of imprisonment for crime.  In the first model, Prob was almost significant, in the final model Prob is significant (*). And thus explains a bit of the variance of crimerates. The probability of imprisonment thus has some influence on crimerates. When the probability is higher that your are going to be improsined for a crime, less crimes were commited, indicating a negative relationship. This refers to the idea, that a harsher punishment of crime will result in lower crimerates, because people are less tempted to commit a crime, since the effects of their deeds may be less favourable.
+#Prob: probability of imprisonment for crime.  In the first model, Prob was almost significant, in the final model Prob is significant (*). And thus explains a bit of the variance of crimerates. The probability of imprisonment thus has some influence on crimerates.  B1 is positve, when the probability is higher that your are going to be improsined for a crime, less crimes were commited, indicating a negative relationship. This refers to the idea, that a harsher punishment of crime will result in lower crimerates, because people are less tempted to commit a crime, since the effects of their deeds may be less favourable.
 
 #LF: labor force participation rate of urban males 14-24: This predictor was dropped as second, because LF also had a very low AIC and highly significance. Thus, it's also quite safe to say, that this predictor variable has almost none influence on crimerates. The higher the labor force partictipation in the population doesn't necessarily result in a lower crime rate, indicating there is no relation between the two, because it doesn't predict alot of the variance.  This refers to the idea, that again if there are more people employed, they are less likely to commit crimes, because the need to do it is lower, because they already can provide for themselves and their family.
 
-#M.F: number of males per 100 females: dropped. This predictor variable has been dropped as last, because it didn't fufill the requirements of the drop.test. This leads to the conclusion, that higher the amount of male to female ratio is, and thus the more males are present in the population doesn't necessarily result in higher crimerates, because it doesn't predict alot of the variance, indicating there is no relation between the two.  . This also refers to the idea that males are more likely to commit crimes than females. 
+#M.F: number of males per 100 females: dropped. This predictor variable has been dropped as last, because it didn't fufill the requirements of the drop.test. This leads to the conclusion, that higher the amount of male to female ratio is, and thus the more males are present in the population doesn't necessarily result in higher crimerates, because it doesn't predict alot of the variance, indicating there is no relation between the two. This also refers to the idea that males are more likely to commit crimes than females. 
 
 #NW: percentage nonwhites in population: dropped. This predictor variable has been dropped at second last, because it didn't fufill the requirements of the drop.test. This leads to the conclusion, that the more nonwhite people are present in the population, doesn't necessarily result in a higher crimerate, because it doesn't predict alot of the variance, indicating there is no relation between the two. This refers to the idea, that non white people are dominant in the crimerates, and thus the more nonwhite people are present within a population, the higher the crimerate.
 
-#Time: average time in months served vy offenders in state prisons: This predictor was dropped as first, because of it's very low AIC and highly significance. Thus, it's quite safe to say, that this predictor variable has almost none influence on crimerates. The higher the average time of a vy offender in jail, doesn't result in a lower crime rate, indicating there is no relation between the two, because it doesn't predict alot of the variance.This also refers to the idea that a harsher punishment of crime, leads to a lower crimerate.
+#Time: average time in months served vy offenders in state prisons: This predictor was dropped as first, because of it's very low AIC and highly significance. Thus, it's quite safe to say, that this predictor variable has almost none influence on crimerates. The higher the average time of a vy offender in jail, doesn't result in a lower crime rate, indicating there is no relation between the two, because it doesn't predict alot of the variance. This also refers to the idea that a harsher punishment of crime, leads to a lower crimerate.
+
+
+
+#Extra check for directions:
+ddata <- datadist(crimeData)
+options(datadist="ddata")
+
+#Then we create our model object and print it to the screen
+modelDataCrime <- lrm(Crime~M + Ed + Po1 + LF + M.F + NW + U2 + Ineq + Prob + Time, data=crimeData); modelDataCrime
+#With this lrm, we can see what the directions of the relationships are. They are stated at each predictor.
+
+#M: 
+#Direction of the relationship: slope is 1.1574. So a positive relationship.
+
+#Ed: 
+#Direction of the relationship: slope is 1.1064. So a positive relationship.
+
+#Po1: 
+#Direction of the relationship: slope is 1.1064. So a positive relationship. (explained at 3f)
+
+#U2: 
+#Direction of the relationship: slope is 1.0200. So a positive relationship.
+
+#Ineq: 
+#Direction of the relationship: slope is 0.5854. So a positive relationship.
+
+#Prob: 
+#Direction of the relationship: slope is -36.0655. So a negative relationship.  
+#LF: 
+#Direction of the relationship: the slope is 5.6073. So a positive relationship.
+
+#M.F: 
+#Direction of the relationship: the slope is -0.0079. So a negative relationship.
+
+#NW: 
+#Direction of the relationship: the slope is 0.0180. So a really small positive relationship. 
+
+#Time: 
+#Direction of the relationship: the slope is -0.0543. So a negative relationship.
+
 
 ###3f The directions of several of the relationships you described in 3e make some sense. However, a couple are very strange. First, it is strange that, as per capita expenditure on police protection increases, so does crime rate. What does this relationship suggest about causality between predictors and outcome variables in observational studies like this one?
 

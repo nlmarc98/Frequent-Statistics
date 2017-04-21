@@ -1,0 +1,93 @@
+#Marc Verwoert s4718801
+#Vera Tukke s4766970
+
+library(ggplot2)
+library(pastecs)
+
+###1 Load in the data from ExamGradesWide.csv. This spreadsheet contains the data for the final exam grades from 2 different French language courses. No students from the first course were in the second course. Use the appropriate method to check whether the means in the two courses are different from one another. You do not have a hypothesis about which course students might score higher in. Make sure to graph the data (include means), check assumptions, run the appropriate test, calculate an effect size, and report the results. Hint: remember that certain functions may prefer/require "wide" or "long" data format. If you violate a test assumption, state this, and do not proceed with the rest of the analysis.
+ExamGradesWide<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
+
+grades <- c(ExamGradesWide$beginner, ExamGradesWide$intermediate)
+number_of_samples <- length (grades)/2
+group <- as.factor(c(rep("beginner", number_of_samples), rep ("intermediate", number_of_samples)))
+ExamGradesLong <- data.frame(grades,group)
+
+ggplot(ExamGradesLong, aes( group,grades)) + geom_boxplot(notch=FALSE) +stat_summary(fun.y=mean, geom="point", colour="red")
+
+ExamModel <- t.test(ExamGradesWide$beginner, ExamGradesWide$intermediate); ExamModel
+#p-value <0.05 and hence we cannot reject the null hypothesis of no difference between groups. 
+#p-value= 0.009244
+
+#t= 2.693
+#df = 57.984
+sqrt(( 2.693)^2/(( 2.693)^2 + 57.984))
+#R=0.3334202, which indicates a medium effect.
+
+#Assumptions:
+stat.desc(ExamGradesWide, basic=FALSE, norm=TRUE)
+
+#Data is indeed measured at interval level. Equal intervals on the scale represent equal differences in the property being being measured.
+
+#Normally distributed:the sampling distributions of the scores are normally distributed, both have p-values>0.05, and thus are not-significant and thus normal. Thus scores, are independent.
+shapiro.test(ExamGradesWide$beginner) #p= 0.74649122 
+shapiro.test(ExamGradesWide$intermediate) #p= p-value = 0.5517
+#Independent t-test, because "No students from the first course were in the second course."
+
+#Reporting:
+#On average participants in beginner course scored higher (mean=75, SE.mean=2.47) than in the in the intermediate course (mean=64, SE.mean=2.51). According to a t-test for independent samples this difference was significant, t(57.98) = 2.693 p<0.05. And it did represent a medium-sized effect, r=.33.
+
+#Dependent; Ex suppr > SunshineDrops
+###2 Load in the data from ColdMedicine.csv. This spreadsheet contains data for how long two different medications suppressed the symptons of a cold (e.g., cough, runny nose, sore throat). In this within-subjects experiment, sick individuals were given one medicine, and then, at a later point, were given the other. Doctors measured how long (in hours) the symptons were suppressed after each dosing. Use the appropriate method to check your hypothesis that DiseaseEx suppresses symptons for longer than SunshineDrops. Again, make sure to proceed through the various steps of the analysis. If you violate a test assumption, state this, and do not proceed with the rest of the analysis.
+
+Medicine_long <- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
+#stat.desc(Medicine_long, basic=FALSE, norm=TRUE)
+
+#Assumptions:
+#Dependent t-test: because: "In this within-subjects experiment, sick individuals were given one medicine, and then, at a later point." Because, the subjects are thus tested with the first and second medicine.
+
+#Data is indeed measured at interval level. Equal intervals on the scale represent equal differences in the property being being measured.
+
+differences <- subset(Medicine_long, Medicine=="DiseaseEx")[,"Time"] - subset(Medicine_long, Medicine=="SunshineDrops")[,"Time"]
+shapiro.test(differences)
+#p-value = 0.02803; p<0.05 and thus significant and thus non-normal. Thus we won't proceed with further analysis.
+
+
+###3a In one of the two questions above, the assumption of normality was violated. Because of this, a t-test cannot be used. When this happens, an alternative that can be used is the Wilcoxon test. Just like the t-test, there are 2 versions of the Wilcoxon test: one for independent samples (called the Wilcoxon rank-sum test) and one for dependent samples (called the Wilcoxon signed-rank test). One of the key differences between Wilcoxon tests and t-tests is that the former compare medians between groups, not means. Furthermore, they are based on the rank order of the data points (1st highest, 2nd highest, 3rd highest, etc.) rather than the actual values of the data points. Thus, Wilcoxon tests are also useful when you violate the assumption that your outcome variable is interval/ratio (i.e., when you have ordinal data!). Perform a Wilcoxon test on the data by using the wilcox.test() function. Passing arguments to this function is the same as for the t-test (in terms of entering the data, specifying directional hypotheses, and indicating whether the test should be independent or dependent). However, in addition to these arguments, you must pass two more: correct=False and exact=False. Remember that our hypothesis is that DiseaseEx should be better than SunshineDrops!
+
+modelMed <- wilcox.test(Time~Medicine, data=Medicine_long, paired=TRUE, correct=FALSE, exact=FALSE, alternative="greater"); modelMed
+#p-value = 0.0002584, which is smaller than 0.05. And hence we cannot reject the null hypothesis of no difference between groups.
+
+###3b You are now going to calculate an effect size for the results of the Wilcoxon test. To do this, you need the following information:
+
+#p = the p-value from the Wilcoxon output
+#N = total number of datapoints across both samples
+
+#The equation to calculate an effect size r is qnorm(p/2) / sqrt(n)
+dim(Medicine_long) #40
+rMed<-qnorm(0.0002584/2)/sqrt(40); rMed
+#R= -0.58;  indicates a strong effect. Because it's bigger than 0.5. DiseaseEx has a larger effect than Sunshine.
+
+###THIS IS THE THRESHOLD; RAISE YOUR HAND TO GET SIGNED OFF BY THE TAs
+
+
+###3c You should now get the medians of the two samples as well as the interquartile range (IQR). To get the medians, you can use the same function from 1 and 2 you used to get summary statistics. To get the IQR, use the function IQR(). You can pass each sample separately, or use the by() function.
+
+
+
+by(Medicine_long$Time, Medicine_long$Medicine, stat.desc, basic=FALSE, norm=TRUE)
+
+
+by(Medicine_long$Time, Medicine_long$Medicine, IQR)
+
+#Medicine_long$Medicine: DiseaseEx
+#[1] 1.354042
+
+ # Medicine_long$Medicine: SunshineDrops
+#[1] 1.092401
+
+
+###3d To report the results of a Wilcoxon test, you should use the same format as reporting the t-test. But some things should change, obviously. Instead of reporting the mean and the standard error for each sample, report the median and the IQR. Also, instead of reporting the t statistic, its degrees of freedom, and its p-value, you just report the W or V statistic (depending on whether you are using the rank sum or the signed-rank test) along with the p-value. Also, you should mention if the Wilcoxon test is one-tailed.
+
+#On average participans which used diseaseEx scored higher  (mean=3.4147668, SE.mean=0.2091904 , iqr=1.354042) than SunshineDrops (mean=1.688190017, SE.mean=0.212961256, iqr=1.092401). According to a t-test for dependent samples this difference was significant, V = 198, p <0.05. And it did represent a large-sized effect, r=.-0.58. We have used a one-tailed test.
+
+

@@ -1,0 +1,178 @@
+library(ggplot2)
+library(car)
+library(pastecs)
+
+
+#CHECK IF EVERYWHERE USED CORRECTLY DEPENDENT OR INDEPENDENT T-TEST.
+
+#Marc Verwoert s4718801
+#Vera Tukke s4766970
+
+###NOTE: for reporting, remember to mention if you have performed a one-tailed t-test
+
+
+###Warm-up Exercises
+
+#When you are comparing the means from 2 conditions in an experiment, and the same participants participated in both conditions, what kind of test should you run?
+#Dependent T-test, because we have 2 experimental conditions and the same participants took part in both conditions of the experiment (within subject experiment).
+
+
+#When you are comparing the means from 2 conditions in an experiment, and different participants participated in the 2 conditions, what kind of test should you run?
+#Independent t-test, because we have 2 experimental conditions and different participants were assigned to each condition.
+
+
+#When you are comparing the means from 3 or more conditions in an experiment, what kind of test should you run?
+#Run an analysis of variance (ANOVA), because we want to analyse more than 2 conditions.
+
+###Main Exercises
+
+###1a Load in Smartphone.csv. This spreadsheet contains data from a study on consumer satisfaction with Apple versus Samsung smartphones. In this between-subjects design experiment, participants were given either an Apple or a Samsung phone, told to use it for a week, and then assigned it a rating based on their satisfaction. You are curious whether the mean satisfaction for one phone is greater than the other (but you don't have a specific hypothesis about which phone should be better). Perform the approprite analysis. Make sure to plot your data, test assumptions, run the appropriate test, and report the results. If you violate assumptions, perform an alternative test.
+
+smartPhoneData<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
+#Between-subjects: independent t-test
+#Long-Data.
+#No Specified hypothesis, so two-tailed t-test.
+
+#Assumptions:
+by(smartPhoneData$Rating, smartPhoneData$Brand, stat.desc, basic=FALSE, norm=TRUE)
+
+
+#Data is indeed measured at interval level. Equal intervals on the rating-scale represent equal differences in the property being being measured.
+
+#Normally distributed:
+
+shapiro.test(smartPhoneData$Rating) #p-value = 0.4981
+
+#According to a shapiro test, the rating of the smartphoneData, W =  0.9854, p-value = 0.4981, were not-significantly non-normal. (p>0.05). The data is thus normally   distributed. 
+
+#Independent t-test, scores are independent because "In this between-subjects design experiment, participants were given either an Apple or a Samsung phone."
+
+ggplot(smartPhoneData, aes(Brand, Rating)) + geom_boxplot(notch=TRUE) +stat_summary(fun.y=mean, geom="point", colour="red")
+#Mean of samsung is higher than apple, but apple's boxplot is less long, so with apple more data evenly dispersed around mean.
+
+smartPhoneModel<- t.test(Rating ~ Brand, data=smartPhoneData); smartPhoneModel
+#p-value = 0.1225
+#p-value >0.05 and hence we cannot reject the null hypothesis of no difference between groups. 
+
+#t=-1.5669
+#df = 59.429
+sqrt(( -1.5669)^2/((-1.5669)^2 + 59.429)) #=0.1991826
+#R=0.20, which indicates a small effect.
+
+#Reporting:
+#On average participants with Apple phones scored lower (mean=70.3500000, SE.mean= 1.3036192 ) than Samsung phones (mean=74.7000000 , SE.mean= 2.4511117 ). According to a t-test for independent samples this difference was not-significant, t(59.429) = -1.5669 p>0.05. And it did represent a small-sized effect, r=.20. Assumptions showed no problem.
+
+###1b The consumer research agency that conducted the study in 1a informs you that they made it mistake in their original communication with you: in fact, the study was conducted with a within-subjects design. Thus, the first rating for the Samsung phone is from the same study participant as the first rating for the Apple phone (and so forth). Rerun your analysis from 1a, but with the necessary changes appropriate to a within-subjects design.
+
+#Assumptions:
+#Data is indeed measured at interval level. Equal intervals on the rating-scale represent equal differences in the property being being measured.
+#Independent t-test, scores are independent because "In this between-subjects design experiment, participants were given either an Apple or a Samsung phone."
+
+#Normally distributed:
+
+shapiro.test(smartPhoneData$Rating) #p-value = 0.4981
+
+#According to a shapiro test, the rating of the smartphoneData, W =  0.9854, p-value = 0.4981, were not-significantly non-normal. (p>0.05). The data is thus normally   distributed.
+
+differences <- subset(smartPhoneData, Brand=="Apple")[,"Rating"] - subset(smartPhoneData, Brand=="Samsung")[,"Rating"]
+
+shapiro.test(differences)
+
+#According to a shapiro test, the rating of the smartphoneData, W =  0.95698, p-value =  0.1319, were not-significantly non-normal. (p>0.05). The data is thus still normally   distributed. 
+
+smartPhoneModel.2 <-t.test(Rating~Brand, data=smartPhoneData, paired=TRUE); smartPhoneModel.2
+p-value = 0.003113
+#p-value <0.05 and hence we can reject the null hypothesis of no difference between groups. so, there is a significant difference between the two groups. 
+
+#t=-3.152
+#df = 39
+sqrt(( -3.152)^2/((-3.152)^2 + 39)) #=0.4505842
+#R=0.45, which indicates a medium-sized effect.
+
+#Reporting:
+#On average participants with Apple phones scored lower (mean=70.3500000, SE.mean= 1.3036192 ) than Samsung phones (mean=74.7000000 , SE.mean= 2.4511117 ). According to a t-test for dependent samples this difference was significant, t(39) = -3.152 p<0.05. And it did represent a medium-sized effect, r=.45. Assumptions showed no problem.
+
+###1c Why do you think the p-values in 1a and 1b differ? It may be helpful to create a scatterplot that compares, for each study participant, the Samsung rating they gave (x-axis) against the Apple rating they gave (y-axis).
+
+#Due to the relative power of repeated-measure designs, when the participants are used across conditions, the unsystematic variance (error variance) is reduced dramatically, making it easier to detect any systemtatic variance. It eliminates some extraneous variables, and so gives us more sensitivity in the data. Which explains partly why the t-test now is significant, because it's likely that a person which prefers one of the two products gives that one product a higher rating and the other one a lower rating, which affects the t-test.
+
+##########Scatterplot? -> Max weet dat miisschien wel.
+
+
+graphSmartPhone<- ggplot(smartPhoneData, aes(Brand, Rating))
+graphSmartPhone + geom_point() + labs(x = "Brand", y = "Rating") + geom_smooth(method = "lm", colour = "Red")
+
+###1d You discover results from a previous study that suggests that Samsung phones are better liked. Thus, you update your hypothesis to a directional one: you now expect the Samsung phone ratings to be on average HIGHER than the Apple ones. Rerun your analysis from 1b to reflect the change to the hypothesis.
+
+smartPhoneModel.3 <-t.test(Rating~Brand, data=smartPhoneData, paired=TRUE, alternative="greater"); smartPhoneModel.3
+#p-value = 0.9984
+#p-value >0.05 and hence we cannot reject the null hypothesis that Samsung phones are on average better liked. so, there is a significant difference between the two groups. 
+
+#t=-3.152
+#df = 39
+sqrt(( -3.152)^2/((-3.152)^2 + 39)) #=0.4505842
+#R=0.45, which indicates a medium-sized effect.
+
+#Reporting:
+#On average participants with Apple phones scored lower (mean=70.3500000, SE.mean= 1.3036192 ) than Samsung phones (mean=74.7000000 , SE.mean= 2.4511117 ). According to a one tailed t-test for dependent samples this difference was significantly, t(39) = -3.152 p<0.05. And it did represent a medium-sized effect, r=.45. Assumptions showed no problem. The t-test was done one-tailed and showed that samsung phones were thus significantly better liked than apple phones.
+
+
+###1e Why do you think the p-values in 1b and 1d differ (see our discussion way back from chapter 2)?
+#Well, because with a two-tailed test w you are testing for the possibility of an effect in both the positive and the negative direction. And thus your significance level is split, and each of those directions is only half as strong as a one-tailed test, which goes in one direction, and thus it's harder to reach significance, and you get a higher p-value, then when you know that one brand of smartphones is generally more liked than the other.
+
+###2 Load in Bacteria.csv. This spreadsheet contains data from a study on bacteria concentrations in 2 lakes. Water samples were taken from different locations in both lakes, and the amount of bacteria was measured. You are curious whether the overall bacteria level in one lake is higher than in the other lake, but you do not have a hypothesis about which lake might have more bacteria. Perform the appropriate analysis. Again, make sure to plot your data, test assumptions, run the appropriate test, and report the results. If you violate assumptions, perform an alternative test.
+#No directional hypothesis
+
+bacteriaData<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
+
+#Assumptions:
+#Data is indeed measured at interval level. Equal intervals on the rating-scale represent equal differences in the property being being measured.
+#Independent t-test, scores are independent because "Water samples were taken from different locations in both lakes."
+
+#Normally distributed:
+stat.desc(bacteriaData)
+shapiro.test(bacteriaData$RoseLake) #p-value = 0.6355
+#According to a shapiro test, the RoseLake data, W =  0.95671, p-value =  0.6355, were not-significantly non-normal. (p>0.05). The data is thus normally distributed.
+shapiro.test(bacteriaData$LakeSulfur) #p-value = 0.03897
+#According to a shapiro test, the lakeSulFur data, W =  0.87425,  p-value = 0.03897, were significantly non-normal. (p<0.05). The data is thus not normally-distributed. We need to use another test, than the t-test.
+
+amountOfBacteria <- c(bacteriaData$RoseLake, bacteriaData$LakeSulfur)
+number_of_samples <- length (amountOfBacteria)/2
+group <- as.factor(c(rep("RoseLake", number_of_samples), rep ("LakeSulFur", number_of_samples)))
+bacteriaDataLong <- data.frame(amountOfBacteria,group)
+ggplot(bacteriaDataLong, aes(group,amountOfBacteria)) + geom_boxplot(notch=FALSE) +stat_summary(fun.y=mean, geom="point", colour="red")
+#Which shows that the mean of RoseLake is higher than of LakeSulfur, and that that data of roseLake is more even dispersed.
+
+#modelBacteria <- wilcox.test(amountOfBacteria ~ group, data=bacteriaDataLong, paired=FALSE, correct=FALSE,  exact=FALSE); modelBacteria
+
+wilcox.test(bacteriaData$RoseLake, bacteriaData$LakeSulfur, correct=FALSE, exact=FALSE)
+
+#p-value = 0.4184, which is bigger than 0.05. And hence we cannot reject the null hypothesis of no difference in means. So, there is no significant difference between the    two lakes.
+
+
+dim(bacteriaData) #15
+rMed<-qnorm(0.4184/2)/sqrt(15); rMed
+#R= -0.2089346;  indicates a small effect. Because it's bigger than 0.5. 
+
+
+stat.desc(bacteriaData, basic=FALSE, norm=TRUE)
+
+IQR(bacteriaData$RoseLake)
+#17.5
+IQR(bacteriaData$LakeSulfur)
+#45
+
+#On average amount of bacteria measured in RoseLake was higher(mean= 51.2666667 , SE.mean 3.2739472 , IQR=17.5) than LakeSulfur (mean=  41.33333333, SE.mean=6.51347809,     IQR=45). According to a wilcox-test for dependent samples this difference was not-significant, W = 132, p >0.05. And it did represent a small-sized effect, r=.-0.21. 
+
+
+###3 Load in the data in DutyFree.csv. This spreadsheet contains data on how much money customers spent at duty free shops at different European airports (in Euros). Each data point represents a sale. Conduct an analysis to investigate whether the mean sales at the various airports differ. Make sure to graph your data, check assumptions, and calculate an effect size. Furthermore, while you expect the means to differ, you do not have specific hypotheses about which means should differ from one another; therefore, you should do a post hoc analysis to investigate pairwise differences between means. When you are finished, report your results of the main analysis as well as the post hoc findings.
+
+
+
+
+###4 Load in the data from cardio.csv. In this study, researchers measures the amount of calories burned by people in 3 different exercises: jogging, rowing, and swimming. Run an analysis to check whether the mean number of calories burnt differs across the 3 exercises. Make sure to follow all necessary steps. Furthermore, previous research on exercise has suggested that swimming is the most intense workout of the 3, followed by rowing, while jogging is the least rigorous. Using planned comparisons, investigate this hypothesis.
+
+
+
+
+

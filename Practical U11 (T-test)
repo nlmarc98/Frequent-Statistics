@@ -55,7 +55,8 @@ shapiro.test(differences)
 ###3a In one of the two questions above, the assumption of normality was violated. Because of this, a t-test cannot be used. When this happens, an alternative that can be used is the Wilcoxon test. Just like the t-test, there are 2 versions of the Wilcoxon test: one for independent samples (called the Wilcoxon rank-sum test) and one for dependent samples (called the Wilcoxon signed-rank test). One of the key differences between Wilcoxon tests and t-tests is that the former compare medians between groups, not means. Furthermore, they are based on the rank order of the data points (1st highest, 2nd highest, 3rd highest, etc.) rather than the actual values of the data points. Thus, Wilcoxon tests are also useful when you violate the assumption that your outcome variable is interval/ratio (i.e., when you have ordinal data!). Perform a Wilcoxon test on the data by using the wilcox.test() function. Passing arguments to this funcation is the same as for the t-test (in terms of entering the data, specifying directional hypotheses, and indicating whether the test should be independent or dependent). However, in addition to these arguments, you must pass two more: correct=False and exact=False. Remember that our hypothesis is that DiseaseEx should be better than SunshineDrops!
 
 modelMed <- wilcox.test(Time~Medicine, data=Medicine_long, paired=TRUE, correct=FALSE, exact=FALSE, alternative="greater"); modelMed
-#p-value = 0.0002584, which is smaller than 0.05. And hence we can reject the null hypothesis of no difference between groups.
+#p-value = 0.0002584, which is smaller than 0.05. And hence we can reject the null hypothesis of no difference in means.
+
 
 ###3b You are now going to calculate an effect size for the results of the Wilcoxon test. To do this, you need the following information:
 

@@ -168,11 +168,109 @@ IQR(bacteriaData$LakeSulfur)
 ###3 Load in the data in DutyFree.csv. This spreadsheet contains data on how much money customers spent at duty free shops at different European airports (in Euros). Each data point represents a sale. Conduct an analysis to investigate whether the mean sales at the various airports differ. Make sure to graph your data, check assumptions, and calculate an effect size. Furthermore, while you expect the means to differ, you do not have specific hypotheses about which means should differ from one another; therefore, you should do a post hoc analysis to investigate pairwise differences between means. When you are finished, report your results of the main analysis as well as the post hoc findings.
 
 
+dutyFreeData<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
+ggplot(dutyFreeData, aes(Airport, Sales)) + geom_boxplot(notch=TRUE) + stat_summary(fun.y=mean, geom="point", colour="red")
 
+by(dutyFreeData$Sales, dutyFreeData$Airport, stat.desc)
+###Check assumptions
+
+#Assumed data points are independent.
+#Normality can be a problem if sample sizes are quite different, but the sample sizes here are very similair and furthermore the sample size is 30, so we can assume the assumption of normality holds here.
+
+#Data is indeed measured at interval level. Equal intervals on the sales-scale represent equal differences in the property being being measured.
+
+#Check Homogeneity of variance
+
+leveneTest(dutyFreeData$Sales, dutyFreeData$Airport, center = "median")
+
+#For the sales on the airport, the variances were similar for the airports F(3)=0.827, P = 0.491 (P>.05). The assumption thus holds.
+
+dutyFreeModel <- aov(Sales ~ Airport, data=dutyFreeData); summary(dutyFreeModel)
+#P-value= 0.0005: Hence, because the observed significance value is less than .05 we can say that there was a significant effect of airports. However, at this stage westill do not know exactly what the effect of airports was on sales, we do however know that different airports differed with respect to sales.
+#Calculate an effect size for overall model
+summary(dutyFreeModel)
+
+#Omega^2 = (SSm - DFm * MSr) / (SSm + SSr + MSr)
+
+Omega2 = (4181 - 3 * 167.6 ) / (4181 + 4357 + 167.6 ); Omega2
+#Omega=0.4225096, bigger than .14 so represents large effect.
+
+pairwise.t.test(dutyFreeData$Sales,dutyFreeData$Airport, p.adjust.method="BH")
+#Frankfurt - Amsterdam, p=0.0378, and thus smaller than .05. We have a significant difference between the two. 
+#London - Amsterdam, p=0.0254, and thus smaller than .05. We have a significant difference between the two. 
+# London - Frankfurt, p=0.0003, and thus smaller than .05. We have a significant difference between the two. 
+
+# Paris- Amsterdam, p=0.3431 , and thus not smaller than .05. We have a non-significant difference between the two.
+# Paris - Frankfurt, p= 0.2045 , and thus not smaller than .05. We have a non-significant difference between the two.
+# Paris - London, p=0.0043, and thus smaller than .05. We have a significant difference between the two.
+
+#Reporting:  There was a significant effect of airport on sales, F(3, 26) = 8.317,p < .05, omega^2 = .42. Post hoc analysis revealed that
+#high dose and low dose lead to higher libido than placebo, t(12) = 2.474, r = .58, and that high dose lead to higher libido than low dose, t(12) = 2.029, r = .51.
+#With fairly large effect sizes, BH tests revealed significant differences between Frankfurt - Amsterdam, London - Amsterdam, London - Frankfurt, and between Paris - Londo.n. 
 
 ###4 Load in the data from cardio.csv. In this study, researchers measures the amount of calories burned by people in 3 different exercises: jogging, rowing, and swimming. Run an analysis to check whether the mean number of calories burnt differs across the 3 exercises. Make sure to follow all necessary steps. Furthermore, previous research on exercise has suggested that swimming is the most intense workout of the 3, followed by rowing, while jogging is the least rigorous. Using planned comparisons, investigate this hypothesis.
 
+cardioData<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
 
+ggplot(cardioData, aes(workout, calories)) + geom_boxplot(notch=TRUE) + stat_summary(fun.y=mean, geom="point", colour="red")
+
+by(cardioData$calories, cardioData$workout, stat.desc)
+###Check assumptions
+
+#Assumed data points are independent.
+#Normality can be a problem if sample sizes are quite different, but the sample sizes here are very similair and furthermore the sample size is 30, so we can assume the assumption of normality holds here.
+
+#Data is indeed measured at interval level. Equal intervals on the sales-scale represent equal differences in the property being being measured.
+
+#Check Homogeneity of variance
+
+leveneTest(cardioData$calories, cardioData$workout, center = "median")
+
+#For the calories per workout, the variances were similar for the airports F(2)=1.7343, P = 0.1956 (P>.05). The assumption thus holds.
+
+cardioModel <- aov(calories ~ workout, data=cardioData); summary(cardioModel)
+#P-value= 3.15e-06: Hence, because the observed significance value is less than .05 we can say that there was a significant effect of workouts. However, at this stage we still do not know exactly what the effect of an workout was on calories, we do however know that different workouts differed with respect to calories.
+#Calculate an effect size for overall model
+summary(cardioModel)
+
+#Omega^2 = (SSm - DFm * MSr) / (SSm + SSr + MSr)
+
+Omega2Cardio = (1205.1 - 2 *   28.7 ) / (1205.1+ 774.4 + 28.7 ); Omega2Cardio
+#Omega=0.5715068, bigger than .14 so represents large effect.
+
+###Planned Comparisons
+
+levels(cardioData$workout)
+
+#Changing the reference level
+cardioData$workout <- relevel(cardioData$workout, "swimming")
+
+levels(cardioData$workout)
+
+contrasts(cardioData$workout) <- contr.treatment(3)
+
+cardioModelPlanned <- aov(calories~ workout, data=cardioData); summary.lm(cardioModelPlanned)
+
+contrast1 <- c(-2,1,1)   #swimming to jogging and rowing.
+contrast2 <- c(0,1,-1)   #jogging to rowing.
+
+contrasts(cardioData$workout) <- cbind(contrast1, contrast2)
+
+cardioModelPlanned2 <- aov(calories ~ workout, data=cardioData); summary.lm(cardioModelPlanned2)
+
+#calculating effect size for contrasts
+#r = sqrt(t^2 / (t^2 + df))
+#df = num of data points - num of predictors (i.e., contrast variables) - 1
+
+#contrast1
+sqrt((-5.978)^2 / ((-5.978)^2 + 27))
+#0.75
+
+#contrast2
+sqrt((-2.505)^2 / ((-2.505)^2 + 27))
+#0.43
+
+#Reporting: All significant values are reported at p < .05. There was a significant effect of workout on calories, F(2, 27) = 21.01, omega^2 = .571. Planned contrasts revealed that jogging and rowing leads to less calories burned than rowing, t(27) = -5.978, r = .75, and that jogging leads to less calories burned than rowing, t(27) = -2.505, r = .43.
 
 
 

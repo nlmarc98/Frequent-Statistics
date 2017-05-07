@@ -1,0 +1,288 @@
+library(ggplot2)
+library(car)
+library(pastecs)
+
+
+###NOTE: for reporting, remember to mention if you have performed a one-tailed t-test
+
+
+###Warm-up Exercises
+
+#When you are comparing the means from 2 conditions in an experiment, and the same participants participated in both conditions, what kind of test should you run?
+#Dependent t-test
+
+#When you are comparing the means from 2 conditions in an experiment, and different participants participated in the 2 conditions, what kind of test should you run?
+#Independent	t-test	
+
+#When you are comparing the means from 3 or more conditions in an experiment, what kind of test should you run?
+#Are all the means equal? ANOVA (analysis of variance) 
+#Means aren’t all equal, then which means are unequal, and by how much? Tukey’s HSD (Honestly Significant Difference).
+
+###Main Exercises
+
+###1a Load in Smartphone.csv. This spreadsheet contains data from a study on consumer satisfaction with Apple versus Samsung smartphones. In this between-subjects design experiment, participants were given either an Apple or a Samsung phone, told to use it for a week, and then assigned it a rating based on their satisfaction. You are curious whether the mean satisfaction for one phone is greater than the other (but you don't have a specific hypothesis about which phone should be better). 
+#Perform the approprite analysis. 
+#Make sure to plot your data, 
+#test assumptions, 
+#run the appropriate test, 
+#and report the results. If you violate assumptions, perform an alternative test.
+
+read_smartphone <- read.table(file.choose(), header=TRUE, sep="\t", quote="", comment.char="", fill=TRUE)
+
+#The data of Smartphone.csv is in the long format. And because the participants were either given an Apple or a Samsung phone, the data is independent. So a independent t test should be used. We do a two-tailed test
+
+
+#Assumptions:
+
+
+#Normal distribution:
+shapiro.test(read_smartphone$Rating)
+#So: "According to the shapirotest, the rating of the data of the smarthphones, W = 0,9854 and p-value = 0.4981 were not significantly non-normal." So normally distributed.
+
+by( read_smartphone$Rating, read_smartphone$Brand, stat.desc, basic=FALSE, norm=TRUE)
+#So interval level: measurement the distance between attributes have meaning
+
+ggplot(read_smartphone, aes(Brand, Rating)) + geom_boxplot(notch=TRUE) + stat_summary(fun.y=mean, geom="point", colour="red")
+#So we can conclude out of the plot that the mean satisfaction for one phone is greater than the other. The mean of Samsung is higher than apple.
+
+#Then we preform a t-test.
+tSmartphone <- t.test(Rating ~ Brand, data= read_smartphone); tSmartphone
+#The p-value is >0.05 (0.1225). 
+
+###Calculating an effect size
+
+#r = sqrt(-1.5669^2 / (-1.5669^2 + 59.429))
+
+sqrt(((-1.5669)^2 / ((-1.5669)^2 + 59.429)))
+#0.1991826. We can consider this as a small effect
+
+#On	average,	participants	with Samsung phones had a higher rating 	(mean	=	74.70 ,	SE	=	2.4511117),	than with Apple phones (mean	=	70.35,	SE	=	1.3036192 ).	According	to	a	t-test	for	independent	samples,	this	difference	was	not	significant,	t(59.429 (df))	=	-1.5669,	p	>	.05 (0.1225): small effect,	r	=	0.199.	
+
+#So no assumptions were violated.
+
+
+###1b The consumer research agency that conducted the study in 1a informs you that they made it mistake in their original communication with you: in fact, the study was conducted with a within-subjects design. Thus, the first rating for the Samsung phone is from the same study participant as the first rating for the Apple phone (and so forth). Rerun your analysis from 1a, but with the necessary changes appropriate to a within-subjects design.
+
+#The data of Smartphone.csv is in the long format. And because the participants had an Apple and a Samsung phone, the data is dependent. So a dependent t test should be used. 
+
+#Assumptions:
+
+
+#Normal distribution:
+shapiro.test(read_smartphone$Rating)
+#So: "According to the shapirotest, the rating of the data of the smarthphones, W = 0,9854 and p-value = 0.4981 were not significantly non-normal." So normally distributed.
+
+differencesSmartphone <- subset(read_smartphone, Brand=="Apple")[,"Rating"] - subset(read_smartphone, Brand=="Samsung")[,"Rating"]
+
+shapiro.test(differencesSmartphone)
+#So: "According to the shapirotest, the rating of the data of the smarthphones, W = 0.95698 and p-value = 0.1319 were not significantly non-normal." So normally distributed.
+
+
+by( read_smartphone$Rating, read_smartphone$Brand, stat.desc, basic=FALSE, norm=TRUE)
+#So interval level: measurement the distance between attributes have meaning
+
+ggplot(read_smartphone, aes(Brand, Rating)) + geom_boxplot(notch=TRUE) + stat_summary(fun.y=mean, geom="point", colour="red")
+#So we can conclude out of the plot that the mean satisfaction for one phone is greater than the other. The mean of Samsung is higher than apple.
+
+#Then we preform a t-test.
+tSmartphoneTest <- t.test(Rating ~ Brand, data= read_smartphone, paired=TRUE); tSmartphoneTest
+#The p-value is <0.05 (0.003113). 
+
+###Calculating an effect size
+
+#r = sqrt(-3.152^2 / (-3.152^2 + 39))
+
+sqrt(((-3.152)^2 / ((-3.152)^2 + 39)))
+#0.4505842. We can consider this as a medium-sized effect (0.3 is regarded as medium-sized)
+
+#On	average,	participants	with Samsung phones had a higher rating 	(mean	=	74.70 ,	SE	=	2.4511117),	than with Apple phones (mean	=	70.35,	SE	=	1.3036192 ).	According	to	a	t-test	for	dependent	samples,	this	difference	was	not	significant,	t(39 (df))	=	-3.152,	p	<	.05 (0.003113): medium effect,	r	=	0.45.	
+
+
+
+###1c Why do you think the p-values in 1a and 1b differ? It may be helpful to create a scatterplot that compares, for each study participant, the Samsung rating they gave (x-axis) against the Apple rating they gave (y-axis).
+
+#P-value of 1a: P>0.05 (0.1225)
+#P-value of 1b: P<0.05 (0.003113)
+#The p-value in 1a with independent data is higher than the p-value in 1b with dependent data.
+???
+
+###1d You discover results from a previous study that suggests that Samsung phones are better liked. Thus, you update your hypothesis to a directional one: you now expect the Samsung phone ratings to be on average HIGHER than the Apple ones. Rerun your analysis from 1b to reflect the change to the hypothesis.
+
+#The data of Smartphone.csv is in the long format. And because the participants had an Apple and a Samsung phone, the data is dependent. So a dependent t test should be used. 
+
+#Assumptions:
+
+
+#Normal distribution:
+shapiro.test(read_smartphone$Rating)
+#So: "According to the shapirotest, the rating of the data of the smarthphones, W = 0,9854 and p-value = 0.4981 were not significantly non-normal." So normally distributed.
+
+differencesSmartphone <- subset(read_smartphone, Brand=="Apple")[,"Rating"] - subset(read_smartphone, Brand=="Samsung")[,"Rating"]
+
+shapiro.test(differencesSmartphone)
+#So: "According to the shapirotest, the rating of the data of the smarthphones, W = 0.95698 and p-value = 0.1319 were not significantly non-normal." So normally distributed.
+
+
+by( read_smartphone$Rating, read_smartphone$Brand, stat.desc, basic=FALSE, norm=TRUE)
+#So interval level: measurement the distance between attributes have meaning
+
+ggplot(read_smartphone, aes(Brand, Rating)) + geom_boxplot(notch=TRUE) + stat_summary(fun.y=mean, geom="point", colour="red")
+#So we can conclude out of the plot that the mean satisfaction for one phone is greater than the other. The mean of Samsung is higher than apple.
+
+#Then we preform a t-test.
+tSmartphoneTestthird <- t.test(Rating ~ Brand, data= read_smartphone, paired=TRUE, alternative = "greater"); tSmartphoneTestthird 
+#The p-value is >0.05 (0.9984). 
+
+###Calculating an effect size
+
+#r = sqrt(-3.152^2 / (-3.152^2 + 39))
+
+sqrt(((-3.152)^2 / ((-3.152)^2 + 39)))
+#0.4505842. We can consider this as a medium-sized effect (0.3 is regarded as medium-sized)
+
+#On	average,	participants	with Samsung phones had a higher rating 	(mean	=	74.70 ,	SE	=	2.4511117),	than with Apple phones (mean	=	70.35,	SE	=	1.3036192 ).	According	to	a	t-test	for	dependent	samples,	this	difference	was	significant,	t(39 (df))	=	-3.152,	p	<	.05 (0.003113): medium effect,	r	=	0.45.	
+
+#So hypothesis of: "you now expect the Samsung phone ratings to be on average HIGHER than the Apple ones" is correct.
+
+###1e Why do you think the p-values in 1b and 1d differ (see our discussion way back from chapter 2)?
+
+#There is a big difference between one tailed and two tailed tests. If you picture a graph of normal distribution: one tailed is only one side of the graph, two tailed is both sides of the graph. So if you have a p-value, for the one tailed test you would divide the value by two (or ofcourse 1 - the value). But with a two tailed test, the p-value is just that value. So for the two tailed test, the p value will be bigger.And therefore the p-values in 1b and 1 differ: one tailed and two tailed. 
+
+
+###2 Load in Bacteria.csv. This spreadsheet contains data from a study on bacteria concentrations in 2 lakes. Water samples were taken from different locations in both lakes, and the amount of bacteria was measured. You are curious whether the overall bacteria level in one lake is higher than in the other lake, but you do not have a hypothesis about which lake might have more bacteria. Perform the appropriate analysis. Again, make sure to plot your data, test assumptions, run the appropriate test, and report the results. If you violate assumptions, perform an alternative test.
+read_bacteria <- read.table(file.choose(), header=TRUE, sep="\t", quote="", comment.char="", fill=TRUE)
+
+#The data of Bacteria.csv: Water samples were taken from different locations in both lakes. So independent t-test because the samples are independent. And measured at interval level.
+
+#Assumptions:
+
+#Normal distribution:
+stat.desc(read_bacteria)
+
+shapiro.test(read_bacteria$Roselake)
+#So: "According to the shapirotest, the data of the roselake, W = 0,9567 and p-value = 0.6355 were not significantly non-normal." So normally distributed.
+shapiro.test(read_bacteria$LakeSulfur)
+#So: "According to the shapirotest, the data of the lakesulfur, W = 0.87425 and p-value = 0.03897 were significantly non-normal." So normally distributed.
+
+bacteria<- c(read_bacteria$LakeSulfur, read_bacteria$RoseLake)
+samples <-length(bacteria)/2
+asawhole <-as.factor(c(rep("LakeSulfur", samples), rep("RoseLake", samples)))
+bacteriaLong <-data.frame(bacteria, group)
+ggplot(bacteriaLong, aes(group,bacteria))+geom_boxplot(notch=FALSE)+stat_summary(fun.y=mean, geom="point", colour= "blue")
+#So the mean of lakesulfur lays layer than the mean of roselake
+
+dim(read_bacteria)
+#[1] 15  2
+effect<-qnorm(0.4184/2)/sqrt(15); effect
+#r=-0.2089346 so a small effect: bigger than -0.5.
+
+wilcox.test(read_bacteria$LakeSulfur, read_bacteria$RoseLake, correct=FALSE, exact=FALSE)
+#p-value = 0.4184 (P>0,05). So no significant differents, cannot reject null hypothesis.
+
+stat.desc(read_bacteria, basic=FALSE, norm=TRUE)
+
+IQR(read_bacteria$LakeSulfur)
+#45
+
+IQR(read_bacteria$RoseLake)
+#17.5
+
+#On	average,	the amount of bacteria was higher in RoseLake (median	=	51.2666667,	IQR	=	17,5),	than	from lakesulfur	(median	=	41.33333333,	IQR	=	45).	According	to	a	Wilcoxon	test,	this	difference	was	not	significant,?	furthermore,	it	represented	a	small effect,	r	=	-0.21.	
+
+###3 Load in the data in DutyFree.csv. This spreadsheet contains data on how much money customers spent at duty free shops at different European airports (in Euros). Each data point represents a sale. Conduct an analysis to investigate whether the mean sales at the various airports differ. Make sure to graph your data, check assumptions, and calculate an effect size. Furthermore, while you expect the means to differ, you do not have specific hypotheses about which means should differ from one another; therefore, you should do a post hoc analysis to investigate pairwise differences between means. When you are finished, report your results of the main analysis as well as the post hoc findings.
+
+#The data is independent and measured at interval level.
+
+read_dutyFree <- read.table(file.choose(), header=TRUE, sep="\t", quote="", comment.char="", fill=TRUE)
+ggplot(read_dutyFree, aes(Airport, Sales) + geom_boxplot(notch=TRUE) + stat_summary(fun.y=mean, geom="point", colour="blue"))
+
+by(read_dutyFree$Sales, read_dutyFree$Airport, stat.desc)
+#Assumptions
+
+#Normality holds because this is the case if the sample sizes are the same (or very similair).
+
+#homogeneity of variance:
+leveneTest(read_dutyFree$Sales, read_dutyFree$Airport, center="median")
+#The p-value is 0.491 which is bigger than 0.05. The f value is 0.827. So it can be concluded that there is not a difference between the variances in the population.
+
+read_dutyFree <-aov(Sales ~ Airport, data=read_dutyFree); summary(read_dutyFree)
+#P-value= 0.000483: So there was a significant effect of airports. 
+
+#omega^2 = (SSeffect - (dfeffect)(MSerror)) / MSerror + SStotal
+Omega2 = (4181 - 3 * 167.6 ) / (4181 + 4357 + 167.6 ); 
+Omega2
+#0.4225096, so it represents a large effect
+
+pairwise.t.test(read_dutyFree$Sales, read_dutyFree$Airport, p.adjust.method = "BH")
+#Frankfurt & Amsterdam, p=0.03777, p<0.05, significant difference between the two. 
+#London & Amsterdam, p=0.02544, p<0.05, significant difference between the two.  
+#London & Frankfurt, p=0.00028, p<0.05, significant difference between the two.  
+#Paris & Amsterdam, p=0.34311 , p>0.05, non-significant difference between the two.
+#Paris & Frankfurt, p= 0.20452 , p>0.05, non-significant difference between the two.
+#Paris & London, p=0.00426, p<0.05, significant difference between the two. 
+
+#Reporting:  There was a significant effect of airport on sales, F(3, 26) = 8.317,p < .05, omega^2 = .42. Post hoc analysis revealed that
+
+#The pairwise t.test showed significant differences between Frankfurt & Amsterdam, London & Amsterdam, London & Frankfurt, and Paris & London. 
+
+
+
+
+
+###4 Load in the data from cardio.csv. In this study, researchers measures the amount of calories burned by people in 3 different exercises: jogging, rowing, and swimming. Run an analysis to check whether the mean number of calories burnt differs across the 3 exercises. Make sure to follow all necessary steps. Furthermore, previous research on exercise has suggested that swimming is the most intense workout of the 3, followed by rowing, while jogging is the least rigorous. Using planned comparisons, investigate this hypothesis.
+
+read_cardio <- read.table(file.choose(), header=TRUE, sep="\t", quote="", comment.char="", fill=TRUE)
+
+ggplot(read_cardio, aes(workout, calories)) + geom_boxplot(notch=FALSE) + stat_summary(fun.y=mean, geom="point", colour="blue")
+
+by(read_cardio$calories, read_cardio$workout, stat.desc)
+
+#Assumptions
+
+#Assumed data points are independent, data measured at interval level.
+#The assumption of normality holds because the sample sizes are almost the same.
+
+#homogeneity of variance
+leveneTest(read_cardio$calories, read_cardio$workout, center = "median")
+
+#Assumption holds: For the calories per workout, the variances were similar for the airports F(2)=1.7343, P = 0.1956 (P>.05). 
+
+cardioaov <- aov(calories ~ workout, data=cardioData); summary(cardioModel)
+#P-value= 3.15e-06: There was a significant effect of workouts: significance value is less than .05 
+
+#effect size for overall model
+summary(cardioaov)
+#Omega^2 = (SSm - DFm * MSr) / (SSm + SSr + MSr)
+cardioeffect = (1205.1 - 2 *   28.7 ) / (1205.1+ 774.4 + 28.7 ); cardioeffect
+#0.5715068,  large effect.
+
+#Planned Comparisons
+levels(read_cardio$workout)
+
+#Changing the reference level
+read_cardio$workout <- relevel(read_cardio$workout, "swimming")
+
+levels(read_cardio$workout)
+
+contrasts(read_cardio$workout) <- contr.treatment(3)
+
+aovCardio <- aov(calories~ workout, data=read_cardio); summary.lm(aovCardio)
+
+contrast1 <- c(-2,1,1)   #swimming to jogging and rowing.
+contrast2 <- c(0,1,-1)   #jogging to rowing.
+
+contrasts(read_cardio$workout) <- cbind(contrast1, contrast2)
+
+aovCardios <- aov(calories ~ workout, data=read_cardio); summary.lm(aovCardios)
+
+#effect size
+
+#contrast1
+sqrt((-5.978)^2 / ((-5.978)^2 + 27))
+#0.75
+
+#contrast2
+sqrt((-2.505)^2 / ((-2.505)^2 + 27))
+#0.43
+
+#Reporting: Everything was p < .05. There was a significant effect of workout on calories, F(2, 27) = 21.01, omega^2 = .571. Planned contrasts revealed that jogging and rowing leads to less calories burned than rowing, t(27) = -5.978, r = .75, and that jogging leads to less calories burned than rowing, t(27) = -2.505, r = .43.

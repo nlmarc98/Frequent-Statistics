@@ -42,7 +42,7 @@ swimmingData<- read.table(file.choose(), sep="\t", comment.char="", quote="", he
 #Outcome variable is time it took to swim a lap.
 
 #We have added an interaction between two predictors using the ":"
-swimming_model<- lm(Time ~ End + Shirt + Goggles:Flippers, data=swimmingData, na.rm=TRUE)
+swimming_model<- lm(Time ~ End + Shirt + Goggles + Flippers + Goggles:Flippers, data=swimmingData, na.rm=TRUE)
 
 summary(swimming_model)
 
@@ -58,7 +58,8 @@ durbinWatsonTest(swimming_model)
 #homoscedasticity normality, and high influence points
 
 #No severe multicollinearity
-vif(swimming_model)                #Don't worry about multicollinearity for interaction; it's going to be high since the interaction is a product of 2 predictors which were already included in the model as separate terms
+vif(swimming_model_2)          
+#No concering VIF's
 
 #Residuals:
 par(mfrow=c(2,2))
@@ -87,16 +88,6 @@ table(cookSwimmingTable)
 #Non of the values are bigger than 1. So, there are no influential points, and thus no outliers, that may affect the slope of the regression line.
 #If you also look at the graph non of the points fall in the cook's distance and thus influence the cloud of the dots. The cloud of datapoints is pretty close to each other, and we don't have one point which affects the regression line highly.
 
-
-###2 Binary predictors
-
-#Intercept: all predictors at their reference level
-#genderMale: slope (difference) from female to male WHEN ALCOHOL AT ITS REFERENCE LEVEL
-#alcohol4 pints: slope (difference) from none to 4 pints when ALCOHOL AT ITS REFERENCE LEVEL
-
-#Well what about difference from female to male when alcohol = 4 pints?
-#Or, what about difference from none to 4 pints when gender = male?
-
 #If there is not a significant interaction, then there is no difference in the slope
 #If there is a significant interaction, then the slope must be adjusted by the value of the interaction coefficient
 summary(swimming_model)
@@ -111,7 +102,7 @@ by(swimmingData$Time, list(swimmingData$Shirt,swimmingData$Goggles, swimmingData
 
 #We're now going to do a ANOVA, to see if the difference is significant.
 
-swimming_model_2 <- lm(Time~ End + Shirt + Goggles+Flippers, data=swimmingData); summary(swimming_model_2)
+swimming_model_2 <- lm(Time~ End + Shirt + Goggles + Flippers, data=swimmingData); summary(swimming_model_2)
 
 #drop1(swimming_model_2, test="F")
 
@@ -130,6 +121,7 @@ Anova(swimming_model_2, type="III")
 
 
 #In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
+
 # The findings showed that flippers and goggles improved the time needed for swimming, especially when combined. Thus, it follows logically that someone which wears flippers and/or goggles is statistically speaking a faster siwmmer than someone without those tool. There is also a significant interaction between the two, thus when the slope of flippers changes, the slope of goggles changes as well, thus someone who wears flippers, is more likely to also wear goggles.
 
 
@@ -140,6 +132,108 @@ Anova(swimming_model_2, type="III")
 #datafile: reaction_times.csv
 
 #In this study, participants had to make a decision on whether a sequence of letters presented to them on a computer screen was a word or not. How long it took for them to make this decision was recorded (their reaction time). This is called a lexical decision task. In this kind of task, many different factors can influence reaction times, including how frequent the word is, how familiar the work is, and how "imageable" it is--that is, how easy it is to imagine a picture of the word's meaning. Investigate whether, for this data set, this is true. Consider up to the 3-way interaction. Note that reaction times are averages from across participants, so although this was originally a within-subject experiment, participant-level variance is not shared across data points.
+
+
+RTs<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
+###Interaction between Nominal and Interval/Ratio predictor
+
+#In this data, we will predict reaction times to word stimuli on the basis of how frequent and familiar the words are; thus more frequent, familiar and imageable words should be reacted to faster.
+
+#check levels; hi is ref level since it is alphabetically first
+levels(RTs$FAMILIARITY)
+
+#change default level to lo
+RTs$FAMILIARITY <- relevel(RTs$FAMILIARITY, "lo"); levels(RTs$FAMILIARITY)
+
+
+rt_model <- lm(RT ~ FREQUENCY + FAMILIARITY + IMAGEABILITY + FREQUENCY:FAMILIARITY:IMAGEABILITY, data=RTs)
+rt_model_2 <- lm(RT ~ FREQUENCY + FAMILIARITY + IMAGEABILITY, data=RTs)
+summary(rt_model)
+
+###plot the effects
+plot(allEffects(rt_model))
+#If you look at the graphs, it indeed seems that when a word is more imageabile and more familiar, that the reactions times become lower. 
+
+#Model selection, notice our interaction is significant, so we don't want to drop the interaction.
+drop1(rt_model, test="F")
+
+#And we can get statistics for the whole FAMILIARITY predictor, not just the contrasts:
+Anova(rt_model, type="III")
+
+#Checking assumptions:
+#Auto-correlation
+durbinWatsonTest(rt_model)
+#Statistic=    2.440756,  close to 2, so assumption has proably been met, so probably not correlated. P-value of Value .13 confirms this, it is bigger than .05, and therefore non-significant. The value however is more than 2, so indicates a negative correlation. So this assumption has been met, and thus the residuals are uncorrelated. This doesn't indicates some amount of autocorrelation.
+
+#homoscedasticity normality, and high influence points
+
+#No severe multicollinearity
+vif(rt_model_2)          
+#No concerning VIF's values.
+
+#Residuals:
+par(mfrow=c(2,2))
+par(mar=c(4,4,4,4))
+plot (rt_model)
+
+#Linearity: There no sort of curve in the (first) graph, this indicates that the data hasn't violated the assumption of linearity.
+
+#Normal distributed: almost all of the datapoints fall kinda on the line, so it's probably normal.
+#Homoscedasticity: this assumption does hold, the datapoints don't really funnel out. Also it looks like a random array of dots evenly dispersed around zero. So this doesn't indicate variance across residuals and thus doesn't indicate heteroscedasticity. 
+
+#Leverage points:
+dim(RTs)
+averageRts<- (1+4)/48; averageRts #=  0.01 #(k+1)/n
+
+RtsHat <- hatvalues(rt_model) 
+RtsTable<-RtsHat > 2 *  averageRts | RtsHat > 3*   averageRts; RtsTable
+table(RtsTable)
+#Some of the values are 2 or 3 times bigger than the ave. value, and thus some affect the data points positioning.
+#Also if you look at the graph: we have  a few datapoints with extreme x-values, so we have leverage points, so we have cause for concern. 
+
+#Influential points:
+cookRts<-cooks.distance(rt_model)
+cookRtsTable<-cookRts > 1; cookRtsTable
+table(cookRtsTable)
+#One of the values are bigger than 1. So, there is one influential point, and thus we have an outlier, that may affect the slope of the regression line.
+#If you also look at the graph one of the points fall in the cook's distance and thus influence the cloud of the dots. The cloud of datapoints is pretty close to each other, , but we have one point which affects the regression line highly.
+
+Anova(rt_model_2, type="III")
+
+
+
+#Reporting (for planned contrasts): The final model's formula was RT ~ FREQUENCY + FAMILIARITY + IMAGEABILITY + FREQUENCY:FAMILIARITY:IMAGEABILITY. The overall effect of FAMILIARITY was significant (p<0.05).  There was also a marginally significant effect of FREQUENCY (p=0.051); as Frequency increased, reaction times decreased.  IMAGEABILITY had no significant effect (p>0.05). Finally, the model was significant overall (F(6,41)=6.959, p<0.05) and explained a small amount of variance (mult. R2=0. 0.2224, adj. R2=0.1086 ). All regression coefficients, as well as their standard errors, t scores, and p-values, are provided in the appendix. Checking of model assumptions revealed no problems
+
+#Appendix
+#Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)                             698.071     46.567  14.991   <2e-16 ***
+#  FREQUENCY                               -11.185     13.418  -0.834    0.409    
+#FAMILIARITYhi                           -75.335     46.429  -1.623    0.112    
+#IMAGEABILITYlo                            9.118     30.188   0.302    0.764    
+#FREQUENCY:FAMILIARITYlo:IMAGEABILITYhi  -22.593     36.503  -0.619    0.539    
+#FREQUENCY:FAMILIARITYhi:IMAGEABILITYhi    2.056     14.409   0.143    0.887    
+#FREQUENCY:FAMILIARITYlo:IMAGEABILITYlo  -33.300     37.400  -0.890    0.378    
+#FREQUENCY:FAMILIARITYhi:IMAGEABILITYlo       NA         NA      NA       NA  
+
+#In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
+
+# The findings showed that as words become more familiar, the rt increased. And that frequency and imageability didn't contribute significantly to a lower RT time. There is also a significant interaction between the three, words who were more familiar, frequent and imagable had better rt's. 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

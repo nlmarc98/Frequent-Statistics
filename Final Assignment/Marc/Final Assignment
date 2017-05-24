@@ -8,6 +8,9 @@ library(car)
 library(pastecs)
 library(effects)
 library(gvlma)
+library(lme4)
+library(lmerTest)
+library(MuMIn)
 
 #Some general tips:
 
@@ -27,7 +30,6 @@ library(gvlma)
 #Also, when using drop1(), you must use the Chisq test instead of the F test when you have created a model using random intercepts!
 
 #It may be necessary to remove rows that contain missing data!
-
 
 ###################
 #####Swimming Data
@@ -105,9 +107,7 @@ by(swimmingData$Time, list(swimmingData$Shirt,swimmingData$Goggles, swimmingData
 
 Anova(new_swimming_model, type="III")
 
-
 #pairwise.t.test(swimmingData$Shirt,swimmingData$Goggles,swimmingData$Flippers, swimmingData$End, p.adjust.method="BH")
-
 
 #The final model formula was Time~ End + Shirt + Goggles:Flippers. The main effect End was not sigificant (p>0.5), but the main effect shirt and goggles were (p<0.5) though the interaction between flippers and goggles was significant (p<0.05). Specifically, flippers showed a significant decrease in time needed for laps as they moved from no flippers to flippers. When flippers and goggles were put together, compared to no flippers and goggles, time needed for laps increased when those were both no. The model was highly significant overall (F(5,64)=11.44, p<0.001) with a large degree of explained variance (mult. R2= 0.4719, adj. R2=0.4306). All regression coefficients, as well as their standard errors, t scores, and p-values, are provided in the appendix. Checking of model assumptions revealed no problems.
 
@@ -225,9 +225,7 @@ pairwise.t.test(RTs$RT, RTs$FAMILIARITY, p.adjust.method="BH")
 
 #Each value is a p-value that tells us whether the particular pair of factor levels have different means.
 
-
 #Reporting: The final model's formula was RT ~ FREQUENCY + FAMILIARITY. The overall effect of FAMILIARITY was significant (p=0.02882 < 0.05). However, a post-hoc test showed wasn't significant between the low familiarity condition and the medium and high familiarity conditions (p=0.013). Specifically, reaction times in the medium and high familiarity conditions were lower than in the low condition. While the reaction times in the medium condition were higher than in the high condition. There was also a significant effect of FREQUENCY (p=0.04767); as Frequency increased, reaction times decreased. Finally, the model was significant overall (F(2,45)=5.671, p<0.05) and explained  a small amount of variance (Multiple R-squared:  0.2013,	Adjusted R-squared:  0.1658 . All regression coefficients, as well as their standard errors, t scores, and p-values, are provided in the appendix. Checking of model assumptions revealed no problems.
-
 
 #Appendix: 
 #  Coefficients:
@@ -412,36 +410,61 @@ idiomData<- read.table(file.choose(), sep="\t", comment.char="", quote="", heade
 #Random Intercepts
 
 idiom_model<-lm(log_RTs~Condition+Freqs+Knowledge+Idiom+Subject+LP+Transparency, data=idiomData)
+#drop1(idiom_model,  test="F")
 summary(idiom_model)
 
 #Problem: violation of independence assumption! (each subject provides multiple data points)
 #To account for this, we can give each subject their own intercept (and thus their own regression line).
 
 #Run a mixed model with random intercepts
-library(lme4)
-library(lmerTest)
-
-m2 <- lmer(BloodPressure ~ Hour + (1|Subject), data=PressureData)
+m2 <- lmer(log_RTs~Condition+Freqs+Knowledge+Idiom+Subject+LP+Transparency+ (1|Subject), data=idiomData);m2
 summary(m2)
 
 #Calculate r2
-library(MuMIn)
-r.squaredGLMM(m2) #R2m (marginal r squared) is the one we want--it tells us how much variance we would expect to be explained in the population
+r.squaredGLMM(m2) #R2m (marginal r squared) is the one we want--it tells us how much variance we would expect to be explained in the population)
+#0.06289474=6.28% explained.
 
-#you can get the random intercepts for each participant like this
+# Random intercepts for each participant:
 coef(m2)
 
-#We can plot each participant's own regression, as well as the global regression line that is calculated by averaging over the individual participant lines
-ggplot(PressureData, aes(Hour, BloodPressure, color=Subject)) + geom_point() + geom_smooth(method="lm") + geom_abline(intercept=65.72, slope=.59, color="red") + geom_abline(intercept=89.86, slope=.59, color="red") + geom_abline(intercept=101.13, slope=.59, color="red") + geom_abline(intercept=156.29, slope=.59, color="red") + geom_abline(intercept=128.95, slope=.59, color="red") + geom_abline(intercept=108.39, slope=.59, color="green")
+drop1(m2, test="Chisq")
+# Shows that subject, lp and trasparency are non-significant and have a lower AIC, so we can drop these predictors.
+
+#now with interactions
+m3 <- lmer(log_RTs~Condition+Freqs+Knowledge+Idiom +Condition:Freqs+Condition:Knowledge+Condition:Idiom+Freqs:Knowledge+Freqs:Idiom+Knowledge:Idiom+ (1|Subject), data=idiomData);m3
+
+drop1(m3, test="Chisq")
+#Non of the interactions are significant, so we can drop all interactions. None of the predictors changes as the value of the other predictor changes.
+
+m4 <- lmer(log_RTs~Condition+Freqs+Knowledge+Idiom+ (1|Subject), data=idiomData);m4
+
+#Assumptions:
+
+#When checking for multicollinearity, note that vif values for interactions and single predictors that participate in interactions can be quite high. This is nothing to worry about. Single predictors that do not participate in interactions, however, should have vif values below 10.
 
 
-#Can you only use random intercepts for subjects? NO!
-#items are often also treated as a random effect
-#e.g., 20 pictures that participants must look at in an MRI experiment
-#so, if you had a column with repeated items in it, you could also at (1|Item) to your linear model equation!
+#Residuals:
+par(mfrow=c(2,2))
+par(mar=c(4,4,4,4))
+plot (m4)
+
+#Homoscedasticity: this assumption doesn hold, the datapoints don't really funnel out. Also it does look like a random array of dots evenly dispersed around zero. So this doesn't indicate variance across residuals and thus doesn't indicate heteroscedasticity. 
+
+m4Norm<-qplot(sample=residuals(m4), stat="qq"); m4Norm
+
+#Normal distributed: the plot has pretty normal curve. Alot of the datapoints would fall kinda nicely on a linear line, so it's normal.
+
+#plot(allEffects(m4))
+
+Anova(m4, type="III")
+summary(m4)
+
+#Reporting (for planned contrasts): The final model's formula was log_RTs~Condition+Freqs+Knowledge+Idiom. The overall effect of Freqs, Knowledge and idiom were significant p<0.05. The model was significant overall (F()=, p<0.001) and explained  a large amount of variance (mult. R2=, adj. R2=). Checking of model assumptions revealed no problems.
 
 
+################################################################################################################What about planned contrasts..... (TO DO: maybe?)
 
+#In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
 
 #########################
 #########Attributions

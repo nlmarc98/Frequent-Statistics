@@ -105,6 +105,10 @@ by(swimmingData$Time, list(swimmingData$Shirt,swimmingData$Goggles, swimmingData
 
 Anova(new_swimming_model, type="III")
 
+
+#pairwise.t.test(swimmingData$Shirt,swimmingData$Goggles,swimmingData$Flippers, swimmingData$End, p.adjust.method="BH")
+
+
 #The final model formula was Time~ End + Shirt + Goggles:Flippers. The main effect End was not sigificant (p>0.5), but the main effect shirt and goggles were (p<0.5) though the interaction between flippers and goggles was significant (p<0.05). Specifically, flippers showed a significant decrease in time needed for laps as they moved from no flippers to flippers. When flippers and goggles were put together, compared to no flippers and goggles, time needed for laps increased when those were both no. The model was highly significant overall (F(5,64)=11.44, p<0.001) with a large degree of explained variance (mult. R2= 0.4719, adj. R2=0.4306). All regression coefficients, as well as their standard errors, t scores, and p-values, are provided in the appendix. Checking of model assumptions revealed no problems.
 
 #Appendix:
@@ -175,11 +179,8 @@ plot(allEffects(rt_model_planned_2))
 #The plots show that: when frequency goes up, the reaction times go indeed down.
 #The plots show that: when familiarity is high, reaction times are lower, then when familiarity is low.
 
-#And we can get statistics for the whole FAMILIARITY predictor, not just the contrasts:
+#And we can get statistics for the predictors:
 Anova(rt_model_planned_2, type="III")
-
-
-#Checking assumptions (use GVIF values as you would VIF values)
 
 #Checking Assumptions:
 #Auto-correlation
@@ -269,17 +270,120 @@ pairwise.t.test(RTs$RT, RTs$FAMILIARITY, p.adjust.method="BH")
 #12. MEDV     Median value of owner-occupied homes in $1000's
 
 
+housingData<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
+
+housingModel <- lm(CRIM ~ INDUS + CHAS + NOX + RM + AGE + DIS + RAD + PTRATIO + B + LSTAT + MEDV + LSTAT:B + LSTAT:INDUS + LSTAT:CHAS + LSTAT:NOX+LSTAT:RM+LSTAT:AGE+LSTAT:DIS+LSTAT:RAD+LSTAT:PTRATIO+LSTAT:INDUS+LSTAT:MEDV +B:INDUS + B:CHAS + B:NOX+B:RM+B:AGE+B:DIS+B:RAD+B:PTRATIO+B:INDUS+LSTAT:MEDV, data=housingData)
+
+summary(housingModel)
+
+drop1(housingModel, test="F")
+# We can drop all interactions except for B:LSTAT, NOX:LSTAT, AGE:LSTAT, DIS:LSTAT,RAD:LSTAT,PTRATION:LSAT, LSTAT:MEDV, INDUS:B, RM:B, AGE:B, DIS:B, RAD:B, because those were (marginally) significant and didn't drop the AIC value.
+housingModel2 <- lm(CRIM ~ INDUS + CHAS + NOX + RM + AGE + DIS + RAD + PTRATIO + B + LSTAT + MEDV + LSTAT:B +  NOX:LSTAT+ AGE:LSTAT+ DIS:LSTAT+RAD:LSTAT+PTRATIO:LSTAT+ LSTAT:MEDV+ INDUS:B+ RM:B+ AGE:B+ DIS:B+ RAD:B ,   data=housingData)
+
+summary(housingModel2)
 
 
+#Checking Assumptions:
+#Auto-correlation
+durbinWatsonTest(housingModel2)
+#Statistic=     1.713543, not quite close to 2, so assumption hasn't probably been met, so probably correlated. P-value of Value .012 confirms this, it is smaller than .05, and therefore significant. The value however is less than 2, so indicates a positive correlation. So this assumption hasn't been met, and thus the residuals are correlated. This does indicate some amount of autocorrelation, but since the statistic value is pretty close to 2, and the p-value isn't that far away from 0.05, we have a bit of autocorrelation, which isn't that bad, especially with so many predictors.
 
+#homoscedasticity normality, and high influence points
 
+#When checking for multicollinearity, note that vif values for interactions and single predictors that participate in interactions can be quite high. This is nothing to worry about. Single predictors that do not participate in interactions, however, should have vif values below 10.
 
+vif(housingModel2)          
+#Predictors themself have also some incrediblly high values, which does indicate some severe multicollinearity. So this assumption has been broken, and thus some predictors are strongly correlated.
 
+#Residuals:
+par(mfrow=c(2,2))
+par(mar=c(4,4,4,4))
+plot (housingModel2)
 
+#Linearity: There not really a sort of curve in the (first) graph, this indicates that the data hasn't violated the assumption of linearity.
 
+#Normal distributed: alot of the datapoints don't fall kinda nicely on the line, so it's isn't normal. But since we have more than 506 datapoints, we can assume it's normal.
+#Homoscedasticity: this assumption doesn't hold, the datapoints do really funnel out. Also it doesn't reallylooks like a random array of dots evenly dispersed around zero. So this does indicate variance across residuals and thus does indicate heteroscedasticity. 
 
+#Leverage points:
+dim(housingData)
+averagehouse<- (1+11)/506; averagert #=  0.01 #(k+1)/n
 
+houseHat <- hatvalues(housingModel2) 
+houseTable<-houseHat > 2 *  averagehouse | houseHat > 3*   averagehouse; houseTable
+table(houseTable)
+#134 of the values are 2 or 3 times bigger than the ave. value, and thus alot of the datapoints affect the data points positioning.
+#Also if you look at the graph: we have alot of datapoints with extreme x-values, so we do have leverage points, so we do have cause for concern. 
 
+#Influential points:
+cookhouse<-cooks.distance(housingModel2)
+cookhouseTable<-cookhouse > 1; cookhouseTable
+table(cookhouseTable)
+#None of the values are bigger than 1. So, there are no influential points, and thus no outliers, that may affect the slope of the regression line.
+#If you also look at the graph non of the points fall in the cook's distance and thus influence the cloud of the dots. The cloud of datapoints is pretty close to each other, and we don't have one point which affects the regression line highly.
+
+plot(allEffects(housingModel2))
+
+Anova(housingModel2, type="III")
+#INDUS           401.3   1 12.8377 0.0003742 ***
+#RM              820.2   1 26.2416 4.365e-07 ***
+#  AGE             714.1   1 22.8470 2.333e-06 ***
+#  DIS             269.4   1  8.6206 0.0034828 ** 
+#  RAD             391.6   1 12.5301 0.0004393 ***
+#B               540.4   1 17.2880 3.802e-05 ***
+#  LSTAT           206.2   1  6.5963 0.0105192 *  
+#B:LSTAT        1095.2   1 35.0388 6.143e-09 ***
+#  NOX:LSTAT       174.4   1  5.5807 0.0185559 *  
+#  AGE:LSTAT       177.3   1  5.6726 0.0176195 *  
+#  DIS:LSTAT       234.5   1  7.5029 0.0063884 ** 
+#  RAD:LSTAT       160.8   1  5.1446 0.0237610 *  
+#  PTRATIO:LSTAT   179.6   1  5.7453 0.0169129 *  
+#  LSTAT:MEDV     1655.2   1 52.9572 1.393e-12 ***
+#  INDUS:B         373.2   1 11.9398 0.0005980 ***
+#  RM:B            943.4   1 30.1820 6.380e-08 ***
+# AGE:B           693.2   1 22.1796 3.252e-06 ***
+# DIS:B           326.4   1 10.4435 0.0013151 ** 
+# RAD:B           268.5   1  8.5909 0.0035390 ** 
+
+#Reporting: The final model's formula was CRIM ~ INDUS + CHAS + NOX + RM + AGE + DIS + RAD + PTRATIO + B + LSTAT + MEDV + LSTAT:B +  NOX:LSTAT+ AGE:LSTAT+ DIS:LSTAT+RAD:LSTAT+PTRATIO:LSTAT+ LSTAT:MEDV+ INDUS:B+ RM:B+ AGE:B+ DIS:B+ RAD:B . The above list of main effects and the two-way interactions were very significant: p<0.05. 
+#The model was highly significant overall (F(23,482)=31.02, p<0.001) and achieved a high variance explanation (Multiple R-squared:  0.5968,	Adjusted R-squared:  0.5775 ). All regression coefficients, as well as their standard errors, t scores, and p-values, are provided in the appendix, and checking of model assumptions revealed problems with autocorrelation, multicoliniearity and leverage points.
+
+#Appendix:
+#Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)   57.8753406 25.2154371   2.295 0.022148 *  
+#  INDUS         -2.2936384  0.6401500  -3.583 0.000374 ***
+#  CHAS          -0.0015088  1.0336757  -0.001 0.998836    
+# NOX           13.9801273 11.2993545   1.237 0.216597    
+# RM            -9.3809539  1.8312688  -5.123 4.37e-07 ***
+#  AGE            0.6030972  0.1261750   4.780 2.33e-06 ***
+#  DIS           -8.2558144  2.8118502  -2.936 0.003483 ** 
+#  RAD            0.8005090  0.2261462   3.540 0.000439 ***
+#  PTRATIO        0.4080013  0.3433255   1.188 0.235269    
+#B             -0.2336379  0.0561915  -4.158 3.80e-05 ***
+#  LSTAT          2.7403339  1.0669732   2.568 0.010519 *  
+#  MEDV           0.0990308  0.0716132   1.383 0.167349    
+#B:LSTAT        0.0033956  0.0005736   5.919 6.14e-09 ***
+#  NOX:LSTAT     -1.7665635  0.7477993  -2.362 0.018556 *  
+#  AGE:LSTAT     -0.0057005  0.0023935  -2.382 0.017619 *  
+#  DIS:LSTAT     -0.1160679  0.0423739  -2.739 0.006388 ** 
+#  RAD:LSTAT      0.0154925  0.0068304   2.268 0.023761 *  
+#  PTRATIO:LSTAT -0.0705403  0.0294294  -2.397 0.016913 *  
+#  LSTAT:MEDV    -0.0516290  0.0070947  -7.277 1.39e-12 ***
+#  INDUS:B        0.0057610  0.0016672   3.455 0.000598 ***
+#  RM:B           0.0289556  0.0052706   5.494 6.38e-08 ***
+#  AGE:B         -0.0014538  0.0003087  -4.710 3.25e-06 ***
+#  DIS:B          0.0227841  0.0070503   3.232 0.001315 ** 
+#  RAD:B         -0.0015580  0.0005316  -2.931 0.003539 ** 
+# ---
+#  Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#Residual standard error: 5.591 on 482 degrees of freedom
+#Multiple R-squared:  0.5968,	Adjusted R-squared:  0.5775 
+#F-statistic: 31.02 on 23 and 482 DF,  p-value: < 2.2e-16
+
+#In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
+
+#Based on the results above, we can conclude that INDUS, RM, AGE, DIS, RAD,B and LSTAT significantly predict crimerate. Which are alot of predicors which have to do with the economy/welfare if the town. Thus, apparently poverty in the population causes higher crime rates, than population which are richer. The interaction between B:LSTAT was also highly significant, and when you looked at the plot, we could see that when ethnic diversity was higher in a town, the economic status was also lower, resulting in the conclusion that apparently the more ethnic diverse people there are, the lower the economic status and thus the higher the crimerate. All of the interactions with either B or LSTAT were significant, which shows that those two predicors apparently highly influence the rest of the predictors, and thus indicating that those two are quite important with respect to predicting crimerate. It also makes sense that the interaction between B and the other predictors are significant, because most of the other predictors are economically related, and apparently ecnomcially related predictors are related with ethnic diversity.
 
 
 ###############################
@@ -303,7 +407,38 @@ pairwise.t.test(RTs$RT, RTs$FAMILIARITY, p.adjust.method="BH")
 #Note: You only need to check the assumptions of homoscedasticity and normally distributed residuals. Plotting the model will only give you the first diagnostic plot, which you can use to check homoscedasticity. To check for normal residuals, you can first get the residuals by passing the model object to the residuals() function, and then plotting the output.
 
 
+idiomData<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
 
+#Random Intercepts
+
+idiom_model<-lm(log_RTs~Condition+Freqs+Knowledge+Idiom+Subject+LP+Transparency, data=idiomData)
+summary(idiom_model)
+
+#Problem: violation of independence assumption! (each subject provides multiple data points)
+#To account for this, we can give each subject their own intercept (and thus their own regression line).
+
+#Run a mixed model with random intercepts
+library(lme4)
+library(lmerTest)
+
+m2 <- lmer(BloodPressure ~ Hour + (1|Subject), data=PressureData)
+summary(m2)
+
+#Calculate r2
+library(MuMIn)
+r.squaredGLMM(m2) #R2m (marginal r squared) is the one we want--it tells us how much variance we would expect to be explained in the population
+
+#you can get the random intercepts for each participant like this
+coef(m2)
+
+#We can plot each participant's own regression, as well as the global regression line that is calculated by averaging over the individual participant lines
+ggplot(PressureData, aes(Hour, BloodPressure, color=Subject)) + geom_point() + geom_smooth(method="lm") + geom_abline(intercept=65.72, slope=.59, color="red") + geom_abline(intercept=89.86, slope=.59, color="red") + geom_abline(intercept=101.13, slope=.59, color="red") + geom_abline(intercept=156.29, slope=.59, color="red") + geom_abline(intercept=128.95, slope=.59, color="red") + geom_abline(intercept=108.39, slope=.59, color="green")
+
+
+#Can you only use random intercepts for subjects? NO!
+#items are often also treated as a random effect
+#e.g., 20 pictures that participants must look at in an MRI experiment
+#so, if you had a column with repeated items in it, you could also at (1|Item) to your linear model equation!
 
 
 

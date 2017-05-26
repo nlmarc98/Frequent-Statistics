@@ -413,12 +413,13 @@ idiom_model<-lm(log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:Fre
 #drop1(idiom_model,  test="F")
 summary(idiom_model)
 
-#Problem: violation of independence assumption! (each subject provides multiple data points)
+#Problem: violation of independence assumption! Each subject provides multiple data points. (Idiom also?)
 #To account for this, we can give each subject their own intercept (and thus their own regression line).
 
 #Run a mixed model with random intercepts
 m2 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:Freqs+ Condition:Knowledge + Condition: LP + Condition:Transparency + Freqs:Knowledge+ Freqs:LP +Freqs:LP+ Freqs:Transparency +Knowledge:LP + LP:Transparency + 
-             (1|Subject), data=idiomData);m2
+             (1|Subject) , data=idiomData);m2
+#+ (1|Idiom)
 summary(m2)
 
 #Calculate r2
@@ -455,12 +456,23 @@ plot(allEffects(m3))
 Anova(m3, type="III")
 summary(m3)
 
-#The final model's formula was log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:LP + Freqs:LP  The overall effect of knowledge and condition were significant p<0.05.While LP was marginally significant.  The only  interaction between predicors that was significant was Condtion:LP. However, it's worth noting that Freqs:LP was marginally significant. The model was significant overall (F(14,2051)=5.078, p<0.001) and explained small amount of variance (mult. R2=0.0240). Checking of model assumptions revealed no problems.
+#The final model's formula was log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:LP + Freqs:LP  The overall effect of knowledge and condition were significant p<0.05.While LP was marginally significant.  The only interaction between predicors that was significant was Condtion:LP. However, it's worth noting that Freqs:LP was marginally significant. The model was significant overall (F(14,2051)=5.078, p<0.001) and explained small amount of variance (mult. R2=0.0240).  All regression coefficients, as well as their standard errors, t scores, and p-values, are provided in the appendix. Checking of model assumptions revealed no problems.
 
 #In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
 
 #There was a significant interaction between Condition and LP. Which makes sense, since condition meant the figurative meaning or to the literal meaning of the last word, and LP is the literal plausibility of the idiom, which are both about how literal the idiom partly or in whole could be interpreted. So when the last word of the idiom can be interpreted quite literally, then the whole idiom also can be interpreted als more literal plausibal and thus the slope of LP changes as the value of condition changes. Apparantly also, the only signifcant predictors were knowledege and Condition wrt to reaction times. So, the more literal the meaning of the idiom's words could be interpreted and ofcourse how well the subject knows the idiom, are meaningful wrt to slower of faster reaction times.
 
+#Appendix:
+#Fixed effects:
+#  Estimate Std. Error         df t value Pr(>|t|)    
+#(Intercept)      6.269e+00  1.262e-01  2.051e+03  49.678  < 2e-16 ***
+#  ConditionLit     9.480e-02  3.411e-02  2.015e+03   2.779  0.00550 ** 
+#  Freqs            2.068e-02  3.929e-02  2.016e+03   0.526  0.59872    
+#Knowledge       -8.705e-03  2.825e-03  2.045e+03  -3.082  0.00208 ** 
+#  LP               4.879e-02  2.875e-02  2.015e+03   1.697  0.08981 .  
+#Transparency     1.504e-02  1.140e-02  2.020e+03   1.319  0.18735    
+#ConditionLit:LP -2.404e-02  8.868e-03  2.015e+03  -2.711  0.00677 ** 
+# Freqs:LP        -1.728e-02  9.653e-03  2.016e+03  -1.790  0.07363 . 
 
 
 #########################
@@ -475,4 +487,4 @@ summary(m3)
 
 #Note: the data in columns "situation" and "person" were used to determine whether the participant was paying attention. If they were, there should be a value of "burglary" or "PSA" in the "situation" column, and "WJ" in the person column. All other data is not valid and should be excluded.
 
-
+clause_order_data<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)

@@ -413,13 +413,13 @@ idiom_model<-lm(log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:Fre
 #drop1(idiom_model,  test="F")
 summary(idiom_model)
 
-#Problem: violation of independence assumption! Each subject provides multiple data points. (Idiom also?)
+#Problem: violation of independence assumption! Each subject and idiom provides multiple data points. (Idiom also?)
 #To account for this, we can give each subject their own intercept (and thus their own regression line).
 
 #Run a mixed model with random intercepts
 m2 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:Freqs+ Condition:Knowledge + Condition: LP + Condition:Transparency + Freqs:Knowledge+ Freqs:LP +Freqs:LP+ Freqs:Transparency +Knowledge:LP + LP:Transparency + 
-             (1|Subject) , data=idiomData);m2
-#+ (1|Idiom)
+             (1|Subject) + (1|Idiom), data=idiomData);m2
+
 summary(m2)
 
 #Calculate r2

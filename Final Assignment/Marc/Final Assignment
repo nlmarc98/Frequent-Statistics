@@ -409,7 +409,7 @@ idiomData<- read.table(file.choose(), sep="\t", comment.char="", quote="", heade
 
 #Random Intercepts
 
-idiom_model<-lm(log_RTs~Condition+Freqs+Knowledge+Idiom+Subject+LP+Transparency, data=idiomData)
+idiom_model<-lm(log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:Freqs+ Condition:Knowledge + Condition: LP + Condition:Transparency + Freqs:Knowledge+ Freqs:LP +Freqs:LP+ Freqs:Transparency +Knowledge:LP + LP:Transparency, data=idiomData)
 #drop1(idiom_model,  test="F")
 summary(idiom_model)
 
@@ -417,54 +417,51 @@ summary(idiom_model)
 #To account for this, we can give each subject their own intercept (and thus their own regression line).
 
 #Run a mixed model with random intercepts
-m2 <- lmer(log_RTs~Condition+Freqs+Knowledge+Idiom+Subject+LP+Transparency+ (1|Subject), data=idiomData);m2
+m2 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:Freqs+ Condition:Knowledge + Condition: LP + Condition:Transparency + Freqs:Knowledge+ Freqs:LP +Freqs:LP+ Freqs:Transparency +Knowledge:LP + LP:Transparency + 
+             (1|Subject), data=idiomData);m2
 summary(m2)
 
 #Calculate r2
 r.squaredGLMM(m2) #R2m (marginal r squared) is the one we want--it tells us how much variance we would expect to be explained in the population)
-#0.06289474=6.28% explained.
+#0.02403489=2.4% explained.
 
 # Random intercepts for each participant:
 coef(m2)
 
 drop1(m2, test="Chisq")
-# Shows that subject, lp and trasparency are non-significant and have a lower AIC, so we can drop these predictors.
-
-#now with interactions
-m3 <- lmer(log_RTs~Condition+Freqs+Knowledge+Idiom +Condition:Freqs+Condition:Knowledge+Condition:Idiom+Freqs:Knowledge+Freqs:Idiom+Knowledge:Idiom+ (1|Subject), data=idiomData);m3
-
-drop1(m3, test="Chisq")
-#Non of the interactions are significant, so we can drop all interactions. None of the predictors changes as the value of the other predictor changes.
-
-m4 <- lmer(log_RTs~Condition+Freqs+Knowledge+Idiom+ (1|Subject), data=idiomData);m4
+#Except for Condition:LP and Freqs:LP none of the interactions are significant, so we can drop all those interactions. 
+m3 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:LP + Freqs:LP +
+             (1|Subject), data=idiomData);m3
+summary(m3)
 
 #Assumptions:
-
-#When checking for multicollinearity, note that vif values for interactions and single predictors that participate in interactions can be quite high. This is nothing to worry about. Single predictors that do not participate in interactions, however, should have vif values below 10.
-
 
 #Residuals:
 par(mfrow=c(2,2))
 par(mar=c(4,4,4,4))
-plot (m4)
+plot (m3)
 
 #Homoscedasticity: this assumption doesn hold, the datapoints don't really funnel out. Also it does look like a random array of dots evenly dispersed around zero. So this doesn't indicate variance across residuals and thus doesn't indicate heteroscedasticity. 
 
-m4Norm<-qplot(sample=residuals(m4), stat="qq"); m4Norm
+m4Norm<-qplot(sample=residuals(m3), stat="qq"); m4Norm
 
-#Normal distributed: the plot has pretty normal curve. Alot of the datapoints would fall kinda nicely on a linear line, so it's normal.
+#Normal distributed: the plot has pretty normal curve. Alot of the datapoints would fall kinda nicely on a linear line, so it's probably normal distributed.
 
-#plot(allEffects(m4))
+plot(allEffects(m3))
+#Shows:
+#That when literal meaning of the last word was high, that the literal plausibility of LP was also high, and that reactions times were better.
+#LP increased, when idioms were more frequently shown.
 
-Anova(m4, type="III")
-summary(m4)
+Anova(m3, type="III")
+summary(m3)
 
-#Reporting (for planned contrasts): The final model's formula was log_RTs~Condition+Freqs+Knowledge+Idiom. The overall effect of Freqs, Knowledge and idiom were significant p<0.05. The model was significant overall (F()=, p<0.001) and explained  a large amount of variance (mult. R2=, adj. R2=). Checking of model assumptions revealed no problems.
-
-
-################################################################################################################What about planned contrasts..... (TO DO: maybe?)
+#The final model's formula was log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:LP + Freqs:LP  The overall effect of knowledge and condition were significant p<0.05.While LP was marginally significant.  The only  interaction between predicors that was significant was Condtion:LP. However, it's worth noting that Freqs:LP was marginally significant. The model was significant overall (F(14,2051)=5.078, p<0.001) and explained small amount of variance (mult. R2=0.0240). Checking of model assumptions revealed no problems.
 
 #In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
+
+#There was a significant interaction between Condition and LP. Which makes sense, since condition meant the figurative meaning or to the literal meaning of the last word, and LP is the literal plausibility of the idiom, which are both about how literal the idiom partly or in whole could be interpreted. So when the last word of the idiom can be interpreted quite literally, then the whole idiom also can be interpreted als more literal plausibal and thus the slope of LP changes as the value of condition changes. Apparantly also, the only signifcant predictors were knowledege and Condition wrt to reaction times. So, the more literal the meaning of the idiom's words could be interpreted and ofcourse how well the subject knows the idiom, are meaningful wrt to slower of faster reaction times.
+
+
 
 #########################
 #########Attributions
@@ -472,7 +469,7 @@ summary(m4)
 
 #Datafile: clause_order_data.csv
 
-#In this experiment, participants read stories about different people and then indicate how favorable they feel about these people (the normV variable). The last sentence of a story is something like "Jay climbed through a window and stole the jewels, police said." This sentence can either be positive or negative (in the Exp column, "Pos" or "Neg"). Furthermore, the story itself can overall be a mixture of positive and negative actions (storyType=positive) or it can agree with the tone of the final sentence (storyType=accordant); that is, a positive story can go with a positive final sentence and a negative story can go with a negative final sentence. Finally, the "attribution phrase" (i.e., "police said") in the sentence can come either at the beginning of the sentence or the end: "Jay climbed through a window and stole the jewels, police said" versus "Police said that Jay climbed through the window and stole the jewels." Attribution phrases are known to weaken statements when placed first. Therefore, if a sentence is negative, then having "police said" at the beginning will make the statement less severe, and we expect the participants to rate Jay more positively. Similarly, if a sentence is positive, having "police said" at the end will weaken the positive statement less, and we expect the participants to rate Jay more positively. Both of these situations represent the bias=positiveBias condition. On the other hand, placing "police said" at the end of a negative sentence weakens the sentence less, and we expect people to rate Jay more negatively. Similarly, placing "police said" at the beginning of a positive sentence weakens the sentence more, and we expect people to rate Jay more negatively. Both of these situations represent the bias=negativeBias condition.
+#In this experiment, participants read stories about different people and then indicate how favorable they feel about these people (the normV variable). The last sentence of a story is something like "Jay climbed through a window and stole the jewels, police said." This sentence can either be positive or negative (in the Exp column, "Pos" or "Neg"). Furthermore, the story itself can overall be a mixture of positive and negative actions (storyType=mixed)) or it can agree with the tone of the final sentence (storyType=accordant); that is, a positive story can go with a positive final sentence and a negative story can go with a negative final sentence. Finally, the "attribution phrase" (i.e., "police said") in the sentence can come either at the beginning of the sentence or the end: "Jay climbed through a window and stole the jewels, police said" versus "Police said that Jay climbed through the window and stole the jewels." Attribution phrases are known to weaken statements when placed first. Therefore, if a sentence is negative, then having "police said" at the beginning will make the statement less severe, and we expect the participants to rate Jay more positively. Similarly, if a sentence is positive, having "police said" at the end will weaken the positive statement less, and we expect the participants to rate Jay more positively. Both of these situations represent the bias=positiveBias condition. On the other hand, placing "police said" at the end of a negative sentence weakens the sentence less, and we expect people to rate Jay more negatively. Similarly, placing "police said" at the beginning of a positive sentence weakens the sentence more, and we expect people to rate Jay more negatively. Both of these situations represent the bias=negativeBias condition.
 
 #Analyze the data to try to determine which of the variables discussed (and their interactions) predict participants' favorability ratings of the people in the stories. In addition, we are also interested in age and gender, although you don't need to include these as interactions with other variables.
 

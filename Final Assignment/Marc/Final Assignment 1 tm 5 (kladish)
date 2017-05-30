@@ -1,0 +1,563 @@
+###FINAL ASSIGNMENT
+
+#Marc Verwoert s4718801
+#Vera Tukke s4766970
+
+library(ggplot2)
+library(car)
+library(pastecs)
+library(effects)
+library(gvlma)
+library(lme4)
+library(lmerTest)
+library(MuMIn)
+
+#Some general tips:
+
+#Remember you need plots of your effects. If you have many predictors, there can be too many graphs for use of the allEffects() function. In this case, it is better to plot the effects individually. 
+#For main effects, you can do this by using plot(Effect("name of effect", name_of_model_object))
+#For interactions, you can use plot(Effect(c("name of effect 1","name of effect 2"), name_of_model_object))
+#If your interaction is between 2 numerical predictors, it's better to use the contour/elevation plots we went over a couple of times.
+
+#When checking for multicollinearity, note that vif values for interactions and single predictors that participate in interactions can be quite high. This is nothing to worry about. Single predictors that do not participate in interactions, however, should have vif values below 10.
+
+#If you violate an assumption, use a different method if we've learned about one. However, if not, just note the assumption violation when you do the reporting and what this means for the interpretation of the results.
+
+#In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
+
+#You'll have to load the necessary libraries! I do not provide those lines of code here!
+
+#Also, when using drop1(), you must use the Chisq test instead of the F test when you have created a model using random intercepts!
+
+#It may be necessary to remove rows that contain missing data!
+
+###################
+#####Swimming Data
+###################
+
+#datafile: swimming.csv
+
+#In this study, the times it took for different participants to swim a lap in a swimming pool were measured. Swimmers varied in terms of which end of the pool they started from (End variable), whether they wore goggles, whether they wore a shirt, and whether they used flippers. Perform an analysis and consider up to 2-way interactions between predictors. 
+
+swimmingData<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
+
+#Outcome variable is time it took to swim a lap.
+
+#We have added an interaction between two predictors using the ":"
+swimming_model<- lm(Time ~ End + Shirt + Goggles + Flippers + End:Shirt + End:Goggles + End:Flippers+ Shirt:Goggles + Shirt:Flippers + Goggles:Flippers, data=swimmingData)
+
+summary(swimming_model)
+
+drop1(swimming_model, test="F")
+#The interaction between everything except for Goggles: Flippers is (highly) non-significant and have a lower AIC. So, we drop all those interactions.
+
+new_swimming_model <- swimming_model<- lm(Time ~ End + Shirt + Goggles + Flippers + Goggles:Flippers, data=swimmingData)
+
+#Checking Assumptions:
+#Auto-correlation
+durbinWatsonTest(new_swimming_model)
+#Statistic=   1.864806  , very close to 2, so assumption has certainly been met, so probably not correlated. P-value of Value .554 confirms this, it is bigger than .05, and therefore non-significant. The value however is less than 2, so indicates a positive correlation. So this assumption has been met, and thus the residuals are uncorrelated. This doesn't indicates some amount of autocorrelation.
+
+#homoscedasticity normality, and high influence points
+
+#No severe multicollinearity
+vif(new_swimming_model)          
+#No concering VIF values. All around 1.
+
+#Residuals:
+par(mfrow=c(2,2))
+par(mar=c(4,4,4,4))
+plot (new_swimming_model)
+
+#Linearity: There no sort of curve in the (first) graph, this indicates that the data hasn't violated the assumption of linearity.
+
+#Normal distributed: almost all of the datapoints fall kinda on the line, so it's probably normal.
+#Homoscedasticity: this assumption does hold, the datapoints don't really funnel out. Also it looks like a random array of dots evenly dispersed around zero. So this doesn't indicate variance across residuals and thus doesn't indicate heteroscedasticity. 
+
+#Leverage points:
+dim(swimmingData)
+averageSwimming<- (1+4)/70; averageSwimming #=  0.01 #(k+1)/n
+
+swimmingHat <- hatvalues(new_swimming_model) 
+swimmingTable<-swimmingHat > 2 *  averageSwimming | swimmingHat > 3*   averageSwimming; swimmingTable
+table(swimmingTable)
+#None of the values are 2 or 3 times bigger than the ave. value, and thus none affect the data points positioning.
+#Also if you look at the graph: we have not really datapoints with extreme x-values, so we don't have leverage points, se we don't have cause for concern. 
+
+#Influential points:
+cookSwimming<-cooks.distance(new_swimming_model)
+cookSwimmingTable<-cookSwimming > 1; cookSwimmingTable
+table(cookSwimmingTable)
+#Non of the values are bigger than 1. So, there are no influential points, and thus no outliers, that may affect the slope of the regression line.
+#If you also look at the graph non of the points fall in the cook's distance and thus influence the cloud of the dots. The cloud of datapoints is pretty close to each other, and we don't have one point which affects the regression line highly.
+
+#If there is not a significant interaction, then there is no difference in the slope
+#If there is a significant interaction, then the slope must be adjusted by the value of the interaction coefficient
+summary(new_swimming_model)
+
+plot(allEffects(new_swimming_model))
+
+#When flippers and goggles were worn, the slope of the line went downwards and with Flippers yes (and Goggles no) even negative, which could indicate a negative effect of this interaction on time on laps. And thus resulting in a more positive performance, the time on laps went down when flippers and or goggles were worn.
+
+#Means for each combination of factor levels
+by(swimmingData$Time, list(swimmingData$Shirt,swimmingData$Goggles, swimmingData$Flippers, swimmingData$End), stat.desc)
+# Shows, that the means are clearly different. The means for time have lower values, when goggles and flippers are worn then when they aren't.
+
+#We're now going to do a ANOVA, to see if the difference is significant.
+
+Anova(new_swimming_model, type="III")
+
+#pairwise.t.test(swimmingData$Shirt,swimmingData$Goggles,swimmingData$Flippers, swimmingData$End, p.adjust.method="BH")
+
+#The final model formula was Time~ End + Shirt + Goggles:Flippers. The main effect End was not sigificant (p>0.5), but the main effect shirt and goggles were (p<0.5) though the interaction between flippers and goggles was significant (p<0.05). Specifically, flippers showed a significant decrease in time needed for laps as they moved from no flippers to flippers. When flippers and goggles were put together, compared to no flippers and goggles, time needed for laps increased when those were both no. The model was highly significant overall (F(5,64)=11.44, p<0.001) with a large degree of explained variance (mult. R2= 0.4719, adj. R2=0.4306). All regression coefficients, as well as their standard errors, t scores, and p-values, are provided in the appendix. Checking of model assumptions revealed no problems.
+
+#Appendix:
+#Sum Sq Df   F value    Pr(>F)    
+#(Intercept)      5463.6  1 1002.6632 < 2.2e-16 ***
+#End                 4.7  1    0.8597 0.3573032    
+#Shirt              50.2  1    9.2173 0.0034651 ** 
+#Goggles            79.4  1   14.5703 0.0003071 ***
+#Flippers          205.5  1   37.7046  5.82e-08 ***
+#Goggles:Flippers   63.6  1   11.6657 0.0011103 ** 
+#Residuals         348.7 64         
+
+#In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
+
+# The findings showed that flippers and goggles improved the time needed for swimming, especially when combined. Thus, it follows logically that someone whowears flippers and/or goggles is statistically speaking a faster siwmmer than someone without those. There is also a significant interaction between the two, thus when the slope of flippers changes, the slope of goggles changes as well, thus someone who wears flippers, is more likely to also wear goggles.
+
+
+##########################
+##########Reaction Times
+##########################
+
+#datafile: reaction_times.csv
+
+#In this study, participants had to make a decision on whether a sequence of letters presented to them on a computer screen was a word or not. How long it took for them to make this decision was recorded (their reaction time). This is called a lexical decision task. In this kind of task, many different factors can influence reaction times, including how frequent the word is, how familiar the work is, and how "imageable" it is--that is, how easy it is to imagine a picture of the word's meaning. Investigate whether, for this data set, this is true. Consider up to the 3-way interaction. Note that reaction times are averages from across participants, so although this was originally a within-subject experiment, participant-level variance is not shared across data points.
+
+RTs <- read.table(file.choose(), header=T, sep="\t", row.names=1)
+head(RTs)
+
+#In this data, we will predict reaction times to word stimuli on the basis of how frequent, familiar and imageabile the words are; thus more frequent, imageabile and familiar words should be reacted to faster.
+
+#Check levels; hi is ref level since it is alphabetically first
+levels(RTs$FAMILIARITY)
+
+#change default level to lo
+RTs$FAMILIARITY <- relevel(RTs$FAMILIARITY, "lo"); levels(RTs$FAMILIARITY)
+rt_model <- lm(RT ~ FREQUENCY + FAMILIARITY + IMAGEABILITY + FAMILIARITY:FREQUENCY+ FAMILIARITY: IMAGEABILITY +FREQUENCY:IMAGEABILITY, data=RTs)
+
+
+#Model selection:
+drop1(rt_model, test="F")
+#All of the interactions are highly non-significant and have a lower AIC. So, we drop all interactions.
+
+new_rt_model <- lm(RT ~ FREQUENCY + FAMILIARITY + IMAGEABILITY, data=RTs)
+drop1(new_rt_model, test="F")
+#This shows that IMAGEABILITY is highly non-significant and has a lower AIC, so we drop this predictor.
+final_rt_model <- lm(RT ~ FREQUENCY + FAMILIARITY, data=RTs)
+summary(new_rt_model)
+
+###plot the effects
+plot(allEffects(new_rt_model))
+#The plots show that: when frequency goes up, the reaction times go indeed down.
+#The plots show that: when familiarity is high, reaction times are lower, then when familiarity is low.
+#The plots show that: when imageability is high, reaction times are lower, then when imageability is low.
+#Planned contrasts.
+
+#levels(RTs$FAMILIARITY)
+#contrast1 <- c(-2, 1, 1)
+#contrast2 <- c(0, 1, -1)
+
+#contrasts(RTs$FAMILIARITY) <- cbind(contrast1,contrast2)
+#contrasts(RTs$FAMILIARITY)
+
+rt_model_planned_2 <- lm(RT ~ FREQUENCY + FAMILIARITY, data=RTs)
+summary(rt_model_planned_2)
+
+
+plot(allEffects(rt_model_planned_2))
+#The plots show that: when frequency goes up, the reaction times go indeed down.
+#The plots show that: when familiarity is high, reaction times are lower, then when familiarity is low.
+
+#And we can get statistics for the predictors:
+Anova(rt_model_planned_2, type="III")
+
+#Checking Assumptions:
+#Auto-correlation
+durbinWatsonTest(rt_model_planned_2)
+#Statistic=    2.429317, quite close to 2, so assumption has proably been met, so probably not correlated. P-value of Value .147 confirms this, it is bigger than .05, and therefore non-significant. The value however is more than 2, so indicates a negative correlation. So this assumption has been met, and thus the residuals are uncorrelated. This doesn't indicates some amount of autocorrelation.
+
+#homoscedasticity normality, and high influence points
+
+#No severe multicollinearity
+vif(rt_model_planned_2)          
+#No concering VIF values. All around 1.
+
+#Residuals:
+par(mfrow=c(2,2))
+par(mar=c(4,4,4,4))
+plot (rt_model_planned_2)
+
+#Linearity: There not really a sort of curve in the (first) graph, this indicates that the data hasn't violated the assumption of linearity.
+
+#Normal distributed: almost all of the datapoints fall kinda on the line, so it's probably normal.
+#Homoscedasticity: this assumption does hold, the datapoints don't really funnel out. Also it looks like a random array of dots evenly dispersed around zero. So this doesn't indicate variance across residuals and thus doesn't indicate heteroscedasticity. 
+
+#Leverage points:
+dim(RTs)
+averagert<- (1+4)/48; averagert #=  0.01 #(k+1)/n
+
+rtHat <- hatvalues(rt_model_planned_2) 
+rtTable<-rtHat > 2 *  averagert | rtHat > 3*   averagert; rtTable
+table(rtTable)
+#None of the values are 2 or 3 times bigger than the ave. value, and thus none affect the data points positioning.
+#Also if you look at the graph: we have not really datapoints with extreme x-values, so we don't have leverage points, se we don't have cause for concern. 
+
+#Influential points:
+cookrt<-cooks.distance(rt_model_planned_2)
+cookrtTable<-cookrt > 1; cookrtTable
+table(cookrtTable)
+#None of the values are bigger than 1. So, there are no influential points, and thus no outliers, that may affect the slope of the regression line.
+#If you also look at the graph non of the points fall in the cook's distance and thus influence the cloud of the dots. The cloud of datapoints is pretty close to each other, and we don't have one point which affects the regression line highly.
+
+#Post-hoc test:
+pairwise.t.test(RTs$RT, RTs$FAMILIARITY, p.adjust.method="BH")
+
+#Each value is a p-value that tells us whether the particular pair of factor levels have different means.
+
+#Reporting: The final model's formula was RT ~ FREQUENCY + FAMILIARITY. The overall effect of FAMILIARITY was significant (p=0.02882 < 0.05). However, a post-hoc test showed wasn't significant between the low familiarity condition and the medium and high familiarity conditions (p=0.013). Specifically, reaction times in the medium and high familiarity conditions were lower than in the low condition. While the reaction times in the medium condition were higher than in the high condition. There was also a significant effect of FREQUENCY (p=0.04767); as Frequency increased, reaction times decreased. Finally, the model was significant overall (F(2,45)=5.671, p<0.05) and explained  a small amount of variance (Multiple R-squared:  0.2013,	Adjusted R-squared:  0.1658 . All regression coefficients, as well as their standard errors, t scores, and p-values, are provided in the appendix. Checking of model assumptions revealed no problems.
+
+#Appendix: 
+#  Coefficients:
+#  Estimate Std. Error t value Pr(>|t|)    
+#  (Intercept)    665.794     16.939  39.306   <2e-16 ***
+#  FREQUENCY      -10.386      5.101  -2.036   0.0477 *  
+#  FAMILIARITYhi  -38.738     17.153  -2.258   0.0288 *  
+#  ---
+#  Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#Residual standard error: 41.21 on 45 degrees of freedom
+#Multiple R-squared:  0.2013,	Adjusted R-squared:  0.1658 
+#F-statistic: 5.671 on 2 and 45 DF,  p-value: 0.006362
+
+#In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
+
+# The findings showed that the 3 predictors hadn't had any meaningful interaction between them, since they could be dropped. So, apparantely the 3 predictors didn't effect each other in a meaningful way. However, as words become more familiar, the rt increased. Imageability could be dropped as a predictor, so this didn't matter wrt to reaction time, thus an more imageabile word, didn't mean an faster reaction time.  Frequency did contribute significantly to a lower RT tim, thus apparently the more frequent a word appeared, the lower the raction time.
+
+
+#########################
+#########Housing Data
+#########################
+
+#Datafile: housing_data.csv
+
+#In this study, researchers collected data on crime rates for different city blocks in and around Boston in the U.S. You are interested in determining which variables predict crime rate. You are particularly interested in how economic status and ethnic diversity interact with each other as well as how each one interacts with the other predictors. Perform a proper analysis. The column information is below. (Note: because towns are repeated, we are actually violating the independence assumption. Normally, we would want to assign random intercepts to each town, but because we do not have a "town" variable, this is difficult...so we'll just ignore this here :-)
+
+
+#1. CRIM      per capita crime rate by block
+#2. INDUS     proportion of non-retail business acres per town
+#3. CHAS      whether property is next to the Charles River or not
+#4. NOX       nitric oxides concentration (parts per 10 million)
+#5. RM        average number of rooms per dwelling
+#6. AGE       proportion of owner-occupied units built prior to 1940
+#7. DIS       weighted distances to five Boston employment centres
+#8. RAD       index of accessibility to radial highways
+#9. PTRATIO   pupil-teacher ratio by town
+#10. B        measure of ethnic diversity
+#11. LSTAT    % lower economic status of the population
+#12. MEDV     Median value of owner-occupied homes in $1000's
+
+
+housingData<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
+
+housingModel <- lm(CRIM ~ INDUS + CHAS + NOX + RM + AGE + DIS + RAD + PTRATIO + B + LSTAT + MEDV + LSTAT:B + LSTAT:INDUS + LSTAT:CHAS + LSTAT:NOX+LSTAT:RM+LSTAT:AGE+LSTAT:DIS+LSTAT:RAD+LSTAT:PTRATIO+LSTAT:INDUS+LSTAT:MEDV +B:INDUS + B:CHAS + B:NOX+B:RM+B:AGE+B:DIS+B:RAD+B:PTRATIO+B:INDUS+LSTAT:MEDV, data=housingData)
+
+summary(housingModel)
+
+drop1(housingModel, test="F")
+# We can drop all interactions except for B:LSTAT, NOX:LSTAT, AGE:LSTAT, DIS:LSTAT,RAD:LSTAT,PTRATION:LSAT, LSTAT:MEDV, INDUS:B, RM:B, AGE:B, DIS:B, RAD:B, because those were (marginally) significant and didn't drop the AIC value.
+housingModel2 <- lm(CRIM ~ INDUS + CHAS + NOX + RM + AGE + DIS + RAD + PTRATIO + B + LSTAT + MEDV + LSTAT:B +  NOX:LSTAT+ AGE:LSTAT+ DIS:LSTAT+RAD:LSTAT+PTRATIO:LSTAT+ LSTAT:MEDV+ INDUS:B+ RM:B+ AGE:B+ DIS:B+ RAD:B ,   data=housingData)
+
+summary(housingModel2)
+
+
+#Checking Assumptions:
+#Auto-correlation
+durbinWatsonTest(housingModel2)
+#Statistic=     1.713543, not quite close to 2, so assumption hasn't probably been met, so probably correlated. P-value of Value .012 confirms this, it is smaller than .05, and therefore significant. The value however is less than 2, so indicates a positive correlation. So this assumption hasn't been met, and thus the residuals are correlated. This does indicate some amount of autocorrelation, but since the statistic value is pretty close to 2, and the p-value isn't that far away from 0.05, we have a bit of autocorrelation, which isn't that bad, especially with so many predictors.
+
+#homoscedasticity normality, and high influence points
+
+#When checking for multicollinearity, note that vif values for interactions and single predictors that participate in interactions can be quite high. This is nothing to worry about. Single predictors that do not participate in interactions, however, should have vif values below 10.
+
+vif(housingModel2)          
+#Predictors themself have also some incrediblly high values, which does indicate some severe multicollinearity. So this assumption has been broken, and thus some predictors are strongly correlated.
+
+#Residuals:
+par(mfrow=c(2,2))
+par(mar=c(4,4,4,4))
+plot (housingModel2)
+
+#Linearity: There not really a sort of curve in the (first) graph, this indicates that the data hasn't violated the assumption of linearity.
+
+#Normal distributed: alot of the datapoints don't fall kinda nicely on the line, so it's isn't normal. But since we have more than 506 datapoints, we can assume it's normal.
+#Homoscedasticity: this assumption doesn't hold, the datapoints do really funnel out. Also it doesn't reallylooks like a random array of dots evenly dispersed around zero. So this does indicate variance across residuals and thus does indicate heteroscedasticity. 
+
+#Leverage points:
+dim(housingData)
+averagehouse<- (1+11)/506; averagert #=  0.01 #(k+1)/n
+
+houseHat <- hatvalues(housingModel2) 
+houseTable<-houseHat > 2 *  averagehouse | houseHat > 3*   averagehouse; houseTable
+table(houseTable)
+#134 of the values are 2 or 3 times bigger than the ave. value, and thus alot of the datapoints affect the data points positioning.
+#Also if you look at the graph: we have alot of datapoints with extreme x-values, so we do have leverage points, so we do have cause for concern. 
+
+#Influential points:
+cookhouse<-cooks.distance(housingModel2)
+cookhouseTable<-cookhouse > 1; cookhouseTable
+table(cookhouseTable)
+#None of the values are bigger than 1. So, there are no influential points, and thus no outliers, that may affect the slope of the regression line.
+#If you also look at the graph non of the points fall in the cook's distance and thus influence the cloud of the dots. The cloud of datapoints is pretty close to each other, and we don't have one point which affects the regression line highly.
+
+plot(allEffects(housingModel2))
+
+Anova(housingModel2, type="III")
+#INDUS           401.3   1 12.8377 0.0003742 ***
+#RM              820.2   1 26.2416 4.365e-07 ***
+#  AGE             714.1   1 22.8470 2.333e-06 ***
+#  DIS             269.4   1  8.6206 0.0034828 ** 
+#  RAD             391.6   1 12.5301 0.0004393 ***
+#B               540.4   1 17.2880 3.802e-05 ***
+#  LSTAT           206.2   1  6.5963 0.0105192 *  
+#B:LSTAT        1095.2   1 35.0388 6.143e-09 ***
+#  NOX:LSTAT       174.4   1  5.5807 0.0185559 *  
+#  AGE:LSTAT       177.3   1  5.6726 0.0176195 *  
+#  DIS:LSTAT       234.5   1  7.5029 0.0063884 ** 
+#  RAD:LSTAT       160.8   1  5.1446 0.0237610 *  
+#  PTRATIO:LSTAT   179.6   1  5.7453 0.0169129 *  
+#  LSTAT:MEDV     1655.2   1 52.9572 1.393e-12 ***
+#  INDUS:B         373.2   1 11.9398 0.0005980 ***
+#  RM:B            943.4   1 30.1820 6.380e-08 ***
+# AGE:B           693.2   1 22.1796 3.252e-06 ***
+# DIS:B           326.4   1 10.4435 0.0013151 ** 
+# RAD:B           268.5   1  8.5909 0.0035390 ** 
+
+#Reporting: The final model's formula was CRIM ~ INDUS + CHAS + NOX + RM + AGE + DIS + RAD + PTRATIO + B + LSTAT + MEDV + LSTAT:B +  NOX:LSTAT+ AGE:LSTAT+ DIS:LSTAT+RAD:LSTAT+PTRATIO:LSTAT+ LSTAT:MEDV+ INDUS:B+ RM:B+ AGE:B+ DIS:B+ RAD:B . The above list of main effects and the two-way interactions were very significant: p<0.05. 
+#The model was highly significant overall (F(23,482)=31.02, p<0.001) and achieved a high variance explanation (Multiple R-squared:  0.5968,	Adjusted R-squared:  0.5775 ). All regression coefficients, as well as their standard errors, t scores, and p-values, are provided in the appendix, and checking of model assumptions revealed problems with autocorrelation, multicoliniearity and leverage points.
+
+#Appendix:
+#Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)   57.8753406 25.2154371   2.295 0.022148 *  
+#  INDUS         -2.2936384  0.6401500  -3.583 0.000374 ***
+#  CHAS          -0.0015088  1.0336757  -0.001 0.998836    
+# NOX           13.9801273 11.2993545   1.237 0.216597    
+# RM            -9.3809539  1.8312688  -5.123 4.37e-07 ***
+#  AGE            0.6030972  0.1261750   4.780 2.33e-06 ***
+#  DIS           -8.2558144  2.8118502  -2.936 0.003483 ** 
+#  RAD            0.8005090  0.2261462   3.540 0.000439 ***
+#  PTRATIO        0.4080013  0.3433255   1.188 0.235269    
+#B             -0.2336379  0.0561915  -4.158 3.80e-05 ***
+#  LSTAT          2.7403339  1.0669732   2.568 0.010519 *  
+#  MEDV           0.0990308  0.0716132   1.383 0.167349    
+#B:LSTAT        0.0033956  0.0005736   5.919 6.14e-09 ***
+#  NOX:LSTAT     -1.7665635  0.7477993  -2.362 0.018556 *  
+#  AGE:LSTAT     -0.0057005  0.0023935  -2.382 0.017619 *  
+#  DIS:LSTAT     -0.1160679  0.0423739  -2.739 0.006388 ** 
+#  RAD:LSTAT      0.0154925  0.0068304   2.268 0.023761 *  
+#  PTRATIO:LSTAT -0.0705403  0.0294294  -2.397 0.016913 *  
+#  LSTAT:MEDV    -0.0516290  0.0070947  -7.277 1.39e-12 ***
+#  INDUS:B        0.0057610  0.0016672   3.455 0.000598 ***
+#  RM:B           0.0289556  0.0052706   5.494 6.38e-08 ***
+#  AGE:B         -0.0014538  0.0003087  -4.710 3.25e-06 ***
+#  DIS:B          0.0227841  0.0070503   3.232 0.001315 ** 
+#  RAD:B         -0.0015580  0.0005316  -2.931 0.003539 ** 
+# ---
+#  Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+#Residual standard error: 5.591 on 482 degrees of freedom
+#Multiple R-squared:  0.5968,	Adjusted R-squared:  0.5775 
+#F-statistic: 31.02 on 23 and 482 DF,  p-value: < 2.2e-16
+
+#In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
+
+#Based on the results above, we can conclude that INDUS, RM, AGE, DIS, RAD,B and LSTAT significantly predict crimerate. Which are alot of predicors which have to do with the economy/welfare if the town. Thus, apparently poverty in the population causes higher crime rates, than population which are richer. The interaction between B:LSTAT was also highly significant, and when you looked at the plot, we could see that when ethnic diversity was higher in a town, the economic status was also lower, resulting in the conclusion that apparently the more ethnic diverse people there are, the lower the economic status and thus the higher the crimerate. All of the interactions with either B or LSTAT were significant, which shows that those two predicors apparently highly influence the rest of the predictors, and thus indicating that those two are quite important with respect to predicting crimerate. It also makes sense that the interaction between B and the other predictors are significant, because most of the other predictors are economically related, and apparently ecnomcially related predictors are related with ethnic diversity.
+
+
+###############################
+#########Idiom Experiment
+###############################
+
+#Datafile: idiom_lexical_decision.csv
+
+#In this experiment, participants were shown Dutch idioms such as "de koe bij de hoorns vatten" (grab the cow by the horns), which hase a figurative meaning of "to take control of a situation." After each idiom, they were shown either a word or a nonword and had to decide whether it was a word or not. The words were related either to the figurative meaning ("Fig" Condition) or to the literal meaning of the last word ("hoorns", i.e. the "Lit" Condition). The experimenter measured how much time, in milliseconds, it took for the participants to make the decision (this is called a lexical decision task), and then she took the log of these reaction times. If reading the idiom activated its figurative meaning in the mind of the subject, then they will be quicker to decide that a figuratively related word ("Fig") is indeed a word. If reading the idioms activated its literal meaning, then the subject will be quicker to make a decision on a literally related words. 
+
+#Other factors might affect reaction times as well. These include: 
+#the frequency of the word, 
+#the literal plausibility (LP) of the idiom (how easy is it to interpret literally, e.g., "staan voor aap" = "stand for ape" is not literally plausible!)
+#the transparency of the idiom (how related are the figurative and literal meanings, e.g., "tegen de lamp lopen" = "walk into the lamp" is not very related to figurative meaning "get caught")
+#How well the subject knows the idiom (Knowledge)
+
+#Your job is to conduct an analysis of this data and report your results. Consider all 2-way interactions. 
+
+#Note: there are multiple data points per subject and per idiom, so both of the variables cause a violation of the independence assumption of regression. You will thus need to give both of these variables random intercepts. (you can just add a second random intercept term to your model equation like you add a first one)
+
+#Note: You only need to check the assumptions of homoscedasticity and normally distributed residuals. Plotting the model will only give you the first diagnostic plot, which you can use to check homoscedasticity. To check for normal residuals, you can first get the residuals by passing the model object to the residuals() function, and then plotting the output.
+
+
+idiomData<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
+
+#Random Intercepts
+
+idiom_model<-lm(log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:Freqs+ Condition:Knowledge + Condition: LP + Condition:Transparency + Freqs:Knowledge+ Freqs:LP +Freqs:LP+ Freqs:Transparency +Knowledge:LP + LP:Transparency, data=idiomData)
+#drop1(idiom_model,  test="F")
+summary(idiom_model)
+
+#Problem: violation of independence assumption! Each subject and idiom provides multiple data points.
+#To account for this, we can give each subject their own intercept (and thus their own regression line).
+
+#Run a mixed model with random intercepts
+m2 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:Freqs+ Condition:Knowledge + Condition: LP + Condition:Transparency + Freqs:Knowledge+ Freqs:LP +Freqs:LP+ Freqs:Transparency +Knowledge:LP + LP:Transparency + 
+             (1|Subject) + (1|Idiom), data=idiomData);m2
+
+summary(m2)
+
+#Calculate r2
+r.squaredGLMM(m2) #R2m (marginal r squared) is the one we want--it tells us how much variance we would expect to be explained in the population)
+#0.02403489=2.4% explained.
+
+# Random intercepts for each participant:
+coef(m2)
+
+drop1(m2, test="Chisq")
+# None of the interactions are significant, so we can drop all those interactions. 
+m3 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+Transparency + (1|Idiom)+
+             (1|Subject), data=idiomData);m3
+summary(m3)
+
+#Assumptions:
+
+#Residuals:
+par(mfrow=c(2,2))
+par(mar=c(4,4,4,4))
+plot (m3)
+
+#Homoscedasticity: this assumption doesn hold, the datapoints don't really funnel out. Also it does look like a random array of dots evenly dispersed around zero. So this doesn't indicate variance across residuals and thus doesn't indicate heteroscedasticity. 
+
+#m3Norm<-qplot(sample=residuals(m3), stat="qq"); m3Norm
+qqnorm(residuals(m3))
+#Normal distributed: the plot has pretty normal curve. Alot of the datapoints would fall kinda nicely on a linear line, so it's probably normal distributed.
+
+plot(allEffects(m3))
+
+Anova(m3, type="III")
+summary(m3)
+
+#The final model's formula was log_RTs~Condition+Freqs+Knowledge+LP+Transparency. The overall effect of knowledge and freqs were significant p<0.05.None of the interactions were significant. The model was significant overall (F(14,2051)=5.078, p<0.001) and explained small amount of variance (mult. R2=0.0240).All regression coefficients, as well as their standard errors, t-scores, and p-values, are provided in the appendix. Checking of model assumptions revealed no problems.
+
+#In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
+
+#There were no significant interacions. Apparantly also, the only signifcant predictors were knowledege and freqs wrt to reaction times. So, the more a word appeared and of course how well the subject knows the idiom, are meaningful wrt to slower or faster reaction times.
+
+#Appendix:
+#(Intercept)   6.529e+00  8.316e-02  2.730e+01  78.510  < 2e-16 ***
+#  ConditionLit -3.921e-03  8.964e-03  1.769e+03  -0.437   0.6619    
+#Freqs        -6.740e-02  1.173e-02  2.606e+02  -5.747 2.53e-08 ***
+#  Knowledge    -6.857e-03  3.023e-03  1.767e+03  -2.268   0.0234 *  
+#  LP           -8.874e-03  8.975e-03  2.130e+01  -0.989   0.3339    
+# Transparency  1.806e-02  2.309e-02  2.260e+01   0.782   0.4422 
+
+
+#########################
+#########Attributions
+#########################
+
+#Datafile: clause_order_data.csv
+
+#In this experiment, participants read stories about different people and then indicate how favorable they feel about these people (the normV variable). The last sentence of a story is something like "Jay climbed through a window and stole the jewels, police said." This sentence can either be positive or negative (in the Exp column, "Pos" or "Neg"). Furthermore, the story itself can overall be a mixture of positive and negative actions (storyType=mixed)) or it can agree with the tone of the final sentence (storyType=accordant); that is, a positive story can go with a positive final sentence and a negative story can go with a negative final sentence. Finally, the "attribution phrase" (i.e., "police said") in the sentence can come either at the beginning of the sentence or the end: "Jay climbed through a window and stole the jewels, police said" versus "Police said that Jay climbed through the window and stole the jewels." Attribution phrases are known to weaken statements when placed first. Therefore, if a sentence is negative, then having "police said" at the beginning will make the statement less severe, and we expect the participants to rate Jay more positively. Similarly, if a sentence is positive, having "police said" at the end will weaken the positive statement less, and we expect the participants to rate Jay more positively. Both of these situations represent the bias=positiveBias condition. On the other hand, placing "police said" at the end of a negative sentence weakens the sentence less, and we expect people to rate Jay more negatively. Similarly, placing "police said" at the beginning of a positive sentence weakens the sentence more, and we expect people to rate Jay more negatively. Both of these situations represent the bias=negativeBias condition.
+
+#Analyze the data to try to determine which of the variables discussed (and their interactions) predict participants' favorability ratings of the people in the stories. In addition, we are also interested in age and gender, although you don't need to include these as interactions with other variables.
+
+#Note: the data in columns "situation" and "person" were used to determine whether the participant was paying attention. If they were, there should be a value of "burglary" or "PSA" in the "situation" column, and "WJ" in the person column. All other data is not valid and should be excluded.
+
+clause<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
+clause_edit <- subset(clause, clause$person=="WJ" & (clause$situation=="burglary" | clause$situation=="PSA"))
+
+clause_edit2<- na.omit(clause_edit)
+
+clause_order_model <- lm(normV~Exp+storyType+bias+Exp: storyType + Exp:bias + storyType:bias + age+sex, data=clause_edit2)
+summary(clause_order_model)
+drop1(clause_order_model, test="F")
+# We can drop the interaction bias:storyType, because it has a lower AIC and is highly non-significant.
+clause_order_model2 <- lm(normV~Exp+storyType+bias+Exp: storyType + Exp:bias+ age+sex, data=clause_edit2)
+
+summary(clause_order_model2)
+
+#Checking Assumptions:
+#Auto-correlation
+durbinWatsonTest(clause_order_model2)
+#Statistic=    2.429317, quite close to 2, so assumption has proably been met, so probably not correlated. P-value of Value .14 confirms this, it is bigger than .05, and therefore non-significant. The value however is more than 2, so indicates a negative correlation. So this assumption has been met, and thus the residuals are uncorrelated. This doesn't indicates some amount of autocorrelation.
+
+#Homoscedasticity normality, and high influence points
+
+#When checking for multicollinearity, note that vif values for interactions and single predictors that participate in interactions can be quite high. This is nothing to worry about. Single predictors that do not participate in interactions, however, should have vif values below 10.
+
+vif(clause_order_model2)          
+#No concering VIF values. All around 1
+
+#Residuals:
+par(mfrow=c(2,2))
+par(mar=c(4,4,4,4))
+plot (clause_order_model2)
+
+#Linearity: There is a sort of curve in the (first) graph, but it isn't that big of a curve, so this probably does indicate that the data hasn't violated the assumption of linearity.
+
+#Normal distributed: Some of the datapoints don't fall kinda nicely on the line, but it seems pretty normal. And we have way more than 30 datapoints, so we can assume it's normal.
+#Homoscedasticity: this assumption doesn't hold, the datapoints do really funnel out. Also it doesn't really looks like a random array of dots evenly dispersed around zero. So this does indicate variance across residuals and thus does indicate heteroscedasticity. 
+
+#Leverage points:
+dim(clause_edit)
+averageclause<- (1+14)/297; averageclause #=  0.01 #(k+1)/n
+
+clauseHat <- hatvalues(clause_order_model2) 
+clauseTable<-clauseHat > 2 *  averageclause | clauseHat > 3*   averageclause; clauseTable
+table(clauseTable)
+#none of the values bigger than the ave. value, and thus none of the datapoints affect the data points positioning.
+#Also if you look at the graph: we don't have datapoints with extreme x-values, so we don't have leverage points, so we don't have cause for concern. 
+
+#Influential points:
+cookclause<-cooks.distance(clause_order_model2)
+cookclauseTable<-cookclause > 1; cookclauseTable
+table(cookclauseTable)
+#None of the values are bigger than 1. So, there are no influential points, and thus no outliers, that may affect the slope of the regression line.
+#If you also look at the graph non of the points fall in the cook's distance and thus influence the cloud of the dots. The cloud of datapoints is pretty close to each other, and we don't have one point which affects the regression line highly.
+
+plot(allEffects(clause_order_model2))
+#Shows:
+#That when Exp was pos and storyType was mixed, normV was high and it was very low when Exp was neg and storyType was accordant. It was a bit low when storytype was mixed and exp was neg, and higher when storyType was mixed, and exp was pos.
+#And when Exp was neg, and bias was neg, then normV was low and when exp was pos and bias was neg, then it was quite high. Similar situation for Normv when bias was positive and exp being neg or pos. 
+
+Anova(clause_order_model2, type="III")
+summary(clause_order_model2)
+
+#Reporting: The final modes was: normV~Exp+storyType+bias+Exp: storyType + Exp:bias+ age+sex. Significant main effects were Exp, storyType and sex (p<0.05). However, age was marginally significant. While the only significant interaction being Exp:Storytype.
+#The model was highly significant overall (F(7,289)=39.22, p<0.001) and achieved a high variance explanation (Multiple R-squared:  0.4872,	Adjusted R-squared:  0.4747 ). All regression coefficients, as well as their standard errors, t scores, and p-values, are provided in the appendix, and checking of model assumptions revealed problems with homoscedasticity.
+
+#Appendix:
+#Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)             -13.4755     5.0815  -2.652  0.00845 ** 
+#  ExpPos                   55.5593     4.6896  11.847  < 2e-16 ***
+#  storyTypemixed           14.6490     3.1458   4.657 4.91e-06 ***
+#  biaspositiveBias          5.0436     3.1152   1.619  0.10654    
+#age                      -0.1981     0.1018  -1.945  0.05270 .  
+#sexMale                  -7.0450     2.6006  -2.709  0.00715 ** 
+#  ExpPos:storyTypemixed   -36.9996     5.2544  -7.042 1.39e-11 ***
+#  ExpPos:biaspositiveBias   0.7215     5.2405   0.138  0.89059    
+
+
+#In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
+
+# Well the signifiacnt main effects were Exp, StorytYpe and sex. Thus we can conclude that whether a sentence was negative or positive, had an pretty good influence on how favorable people felt about the people out of the stories. Also apparantly the kind of storyType was highly related to how favorable people felt, thus an negative story influenced negative thoughts and a positive story influenced positive thoughts wrt to normV. Also apparantly the gender of a person, man or woman was related to the favorability. The only interaction that was significant was Exp:storyType. Indicating that: when Exp was pos and storyType was mixed, normV was indeed higher and it was indeed very low when Exp was neg and storyType was accordant. It was also indeed a bit lower when storytype was mixed and exp was neg, and higher when storyType was mixed, and exp was pos.
+
+
+###post hocs and stuff..

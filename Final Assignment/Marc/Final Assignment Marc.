@@ -398,7 +398,6 @@ m2 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:Freqs+ C
              (1|Subject) + (1|Idiom), data=idiomData);m2
 
 summary(m2)
-
 #Calculate r2
 r.squaredGLMM(m2) #R2m (marginal r squared) is the one we want--it tells us how much variance we would expect to be explained in the population)
 #0.02632958= 2.63%
@@ -407,9 +406,9 @@ r.squaredGLMM(m2) #R2m (marginal r squared) is the one we want--it tells us how 
 coef(m2)
 
 drop1(m2, test="Chisq")
-# None of the interactions are significant, so we can drop all those interactions. 
-m3 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+Transparency + (1|Idiom)+
-             (1|Subject), data=idiomData);m3
+# None of the interactions are significant and have a higher AIC, so we can drop all those interactions. Except for Condition:Knowledge, this one has a higher AIC and is almost significant.
+m3 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+ Condition:Knowledge +Transparency + (1|Idiom)
+            + (1|Subject), data=idiomData);m3
 summary(m3)
 
 #Assumptions:
@@ -431,15 +430,16 @@ plot(allEffects(m3))
 #The 3th graph showed: As knowledge went up, it seemed that Rts went down.
 #The 4th graph showed: As words become more LP and thus easier to interpret, the RTs were lower.
 #The 5th graph showed: Then when Transparancy went up, RTs also went up. When the relation between the figurative and literal meanings went up, RTs went up.
+#The 6th graph showed:that when condition was figurative and knowledge was high, that RTs went down. And that when condition was lit, that a high or low knowledge didn't really matter.
 
 Anova(m3, type="III")
 summary(m3)
 
-#The final model's formula was log_RTs~Condition+Freqs+Knowledge+LP+Transparency. The overall effect of knowledge and freqs were significant p<0.05.None of the interactions were significant. The model was significant overall (F(14,2051)=5.078, p<0.001) and explained small amount of variance (mult. R2=0.0240).All regression coefficients, as well as their standard errors, t-scores, and p-values, are provided in the appendix. Checking of model assumptions revealed no problems.
+#The final model's formula was log_RTs~Condition+Freqs+Knowledge+LP+Transparency. The overall effect of knowledge and freqs were significant p<0.05.None of the interactions were significant. However the interaction between Condition:Knowledge was marginally significant. The model was significant overall (F(14,2051)=5.078, p<0.001) and explained small amount of variance (mult. R2=0.0240).All regression coefficients, as well as their standard errors, t-scores, and p-values, are provided in the appendix. Checking of model assumptions revealed no problems.
 
 #In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
 
-#There were no significant interacions. Apparantly also, the only signifcant predictors were knowledege and freqs wrt to reaction times. So, the more a idiom appeared resulted in faster reactions times. And when an idiom was more known to the participant, this also resulted in faster reaction times.
+#There were no significant interacions. However the interaction between Condition:Knowledge was marginally significant, indicating that there was a slight relation between the two, that when the condition was fig, reaction times where still low when the participant had high knowledge of the word. And that knowledge didn't really matter when the conidition was lit. Apparantly also, the only signifcant predictors were knowledege and freqs wrt to reaction times. So, the more a idiom appeared resulted in faster reactions times. And when an idiom was more known to the participant, this also resulted in faster reaction times.
 
 #Appendix:
 #(Intercept)   6.529e+00  8.316e-02  2.730e+01  78.510  < 2e-16 ***

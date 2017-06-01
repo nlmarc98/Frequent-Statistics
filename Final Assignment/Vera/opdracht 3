@@ -1,0 +1,139 @@
+#########################
+#########Housing Data
+#########################
+
+#Datafile: housing_data.csv
+
+#In this study, researchers collected data on crime rates for different city blocks in and around Boston in the U.S. You are interested in determining which variables predict crime rate. You are particularly interested in how economic status and ethnic diversity interact with each other as well as how each one interacts with the other predictors. Perform a proper analysis. The column information is below. (Note: because towns are repeated, we are actually violating the independence assumption. Normally, we would want to assign random intercepts to each town, but because we do not have a "town" variable, this is difficult...so we'll just ignore this here :-)
+
+
+#1. CRIM      per capita crime rate by block
+#2. INDUS     proportion of non-retail business acres per town
+#3. CHAS      whether property is next to the Charles River or not
+#4. NOX       nitric oxides concentration (parts per 10 million)
+#5. RM        average number of rooms per dwelling
+#6. AGE       proportion of owner-occupied units built prior to 1940
+#7. DIS       weighted distances to five Boston employment centres
+#8. RAD       index of accessibility to radial highways
+#9. PTRATIO   pupil-teacher ratio by town
+  #10. B        measure of ethnic diversity
+   #11. LSTAT    % lower economic status of the population
+#12. MEDV     Median value of owner-occupied homes in $1000's
+
+read_housing<- read.table(file.choose(), sep="\t", comment.char="", quote="", header=T)
+
+#And we make a lm model again.
+houseModel <- lm(CRIM ~	INDUS + CHAS + NOX + RM + AGE +	DIS + RAD + PTRATIO + B	+ LSTAT + 	MEDV + B:LSTAT + B:INDUS + B:CHAS + B:NOX + B:RM + B:AGE + B:DIS + B:RAD + B:PTRATIO + B:MEDV + LSTAT:INDUS + LSTAT:CHAS + LSTAT:NOX +LSTAT:RM +LSTAT:AGE + LSTAT:DIS + LSTAT:RAD +LSTAT:PTRATIO + LSTAT:MEDV, data=read_housing)
+summary(houseModel)
+
+drop1(houseModel, test = "F")
+
+#Then we look at if the predictors are significant.We drop the ones that are not highly significant.
+#So we keep: B:LSTAT RM:B AGE:B DIS:B RAD:B B:MEDV AGE:LSTAT DIS:LSTAT RAD:LSTAT LSTAT:MEDV
+newHouseModel <- lm(CRIM ~	INDUS + CHAS + NOX + RM + AGE +	DIS + RAD + PTRATIO + B	+ LSTAT + 	MEDV + B:LSTAT + B:LSTAT + RM:B + AGE:B + DIS:B + RAD:B + B:MEDV + AGE:LSTAT + DIS:LSTAT + RAD:LSTAT + LSTAT:MEDV, data=read_housing)
+summary(newHouseModel)
+
+drop1(newHouseModel, test = "F")
+
+newSecondHouseModel <- lm(CRIM ~	NOX + RM + AGE +	DIS + RAD + B	+ LSTAT + 	MEDV + B:LSTAT + B:LSTAT + RM:B + AGE:B + DIS:B + AGE:LSTAT + RAD:LSTAT + LSTAT:MEDV, data=read_housing)
+drop1(newSecondHouseModel, test="F")#Now they all are significant, and higher AIC. So, we don't drop any more predictors or interactions.
+summary(newSecondHouseModel)
+
+
+#Assumptions:
+#Residuals:
+par(mfrow =c(2,2))
+par(mar=c(3,3,3,3))
+plot (newSecondHouseModel)
+
+
+#Linearity: There is a clear curve in the graph, this indicates that the data does violate  the assumption of linearity.
+
+#Normal distributed: not all of the datapoints fall roughly on the line so it is not normally distributed
+
+#Homoscedasticity: the datapoints  funnel out. Also it does not look like a random array of dots evenly dispersed around zero. So this does indicate variance across residuals and thus does indicate heteroscedasticity. 
+
+#Auto-correlation
+durbinWatsonTest(newSecondHouseModel)
+#Statistic=  1.657476 , not very close to 2, so assumption has not been met, so probably correlated. P-value of Value 0.008 confirms this, it is not bigger than .05, and therefore significant. The value however is less than 2, so indicates a positive correlation. 
+
+#Leverage points:
+#There are leverage points as can be seen in the plot
+
+#Influential points: ########################## heel raar, alles is false??
+cookHouse<-cooks.distance(newHouseModel)
+cookHouseTable<-cookHouse > 1; cookHouseTable
+table(cookHouseTable)
+#Non of the values are bigger than 1. So, there are no influential points, and thus outliers, that may affect the slope of the regression line.
+#If you also look at the graph non of the points fall in the cook's distance and thus influence the cloud of the dots. The cloud of datapoints is pretty close to each other, and we don't have one point which affects the regression line highly.
+
+#Multicollinearity
+vif(newSecondHouseModel)
+#Muulticollinearity, a lot of values are bigger than 1.
+
+
+plot(allEffects(newSecondHouseModel))
+#moeten we nu alle potjes beschrijven? lijkt mij niet toch??
+
+Anova(newSecondHouseModel, type="III")
+#Sum Sq  Df F value    Pr(>F)    
+#(Intercept)   287.6   1  8.9272  0.002952 ** 
+#INDUS          36.0   1  1.1173  0.291029    
+#CHAS            1.8   1  0.0573  0.810903    
+#NOX           134.3   1  4.1701  0.041686 *  
+#RM            909.8   1 28.2443 1.635e-07 ***
+#AGE           717.5   1 22.2745 3.098e-06 ***
+#DIS           138.4   1  4.2960  0.038730 *  
+#RAD           171.9   1  5.3359  0.021311 *  
+#PTRATIO        46.6   1  1.4481  0.229423    
+#B             340.6   1 10.5747  0.001226 ** 
+#LSTAT           1.6   1  0.0487  0.825355    
+#MEDV           37.7   1  1.1714  0.279645    
+#B:LSTAT      1077.3   1 33.4432 1.318e-08 ***
+#RM:B          986.3   1 30.6184 5.153e-08 ***
+#AGE:B         665.5   1 20.6587 6.942e-06 ***
+#DIS:B         141.1   1  4.3801  0.036880 *  
+#RAD:B          48.3   1  1.4991  0.221411    
+#B:MEDV         45.8   1  1.4233  0.233439    
+#AGE:LSTAT     200.4   1  6.2201  0.012964 *  
+#DIS:LSTAT      74.3   1  2.3057  0.129557    
+#RAD:LSTAT      98.2   1  3.0474  0.081502 .  
+#LSTAT:MEDV    990.8   1 30.7593 4.813e-08 ***
+#Residuals   15590.8 484                      
+
+
+#And the summary of the newHouseModel:
+#Coefficients:
+# Estimate Std. Error t value Pr(>|t|)    
+#(Intercept)  5.700e+01  1.908e+01   2.988  0.00295 ** 
+#  INDUS       -7.471e-02  7.068e-02  -1.057  0.29103    
+#CHAS         2.503e-01  1.045e+00   0.239  0.81090    
+#NOX         -1.027e+01  5.031e+00  -2.042  0.04169 *  
+#  RM          -1.008e+01  1.897e+00  -5.315 1.64e-07 ***
+#  AGE          6.116e-01  1.296e-01   4.720 3.10e-06 ***
+#  DIS         -5.063e+00  2.443e+00  -2.073  0.03873 *  
+#  RAD          5.228e-01  2.263e-01   2.310  0.02131 *  
+#  PTRATIO     -1.986e-01  1.650e-01  -1.203  0.22942    
+#B           -1.584e-01  4.869e-02  -3.252  0.00123 ** 
+#  LSTAT       -8.974e-02  4.065e-01  -0.221  0.82536    
+#MEDV        -3.915e-01  3.617e-01  -1.082  0.27964    
+#B:LSTAT      3.713e-03  6.420e-04   5.783 1.32e-08 ***
+#  RM:B         2.986e-02  5.397e-03   5.533 5.15e-08 ***
+#  AGE:B       -1.441e-03  3.170e-04  -4.545 6.94e-06 ***
+#  DIS:B        1.290e-02  6.165e-03   2.093  0.03688 *  
+#  RAD:B       -6.375e-04  5.207e-04  -1.224  0.22141    
+#B:MEDV       1.094e-03  9.172e-04   1.193  0.23344    
+#AGE:LSTAT   -5.989e-03  2.401e-03  -2.494  0.01296 *  
+#  DIS:LSTAT   -4.949e-02  3.259e-02  -1.518  0.12956    
+#RAD:LSTAT    1.143e-02  6.545e-03   1.746  0.08150 .  
+#LSTAT:MEDV  -3.836e-02  6.916e-03  -5.546 4.81e-08 ***
+#  ---
+#  Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+#Residual standard error: 5.676 on 484 degrees of freedom
+#Multiple R-squared:  0.5827,	Adjusted R-squared:  0.5646 
+#F-statistic: 32.19 on 21 and 484 DF,  p-value: < 2.2e-16
+
+
+# There was a significant relationship within the F-Ratio, p<0.001 (p-value < 2.2e-16).The multiple r-squared and adjusted r-squared were relatively high: Multiple R-squared:  0.5827,	Adjusted R-squared:  0.5646. 
+#The assumptions that were violated are: Linearity, Normality, Auto-correlation, leverage points?? and multicoliniearity.

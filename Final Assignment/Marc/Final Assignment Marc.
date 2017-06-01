@@ -333,17 +333,17 @@ Anova(newSecondHouseModel, type="III")
 # LSTAT:MEDV   1379.0   1 42.5944 1.684e-10 ***
 # Residuals   15864.0 490                      
 ---
-
-#Reporting: The final model's formula was CRIM ~	NOX + RM + AGE +	DIS + RAD + B	+ LSTAT + 	MEDV + B:LSTAT + B:LSTAT + RM:B + AGE:B + DIS:B + AGE:LSTAT + RAD:LSTAT + LSTAT:MEDV. The above list of main effects and the two-way interactions were significant.
-#The model was highly significant overall (F(15,490)=44.27, p<0.001) and achieved a high variance explanation (Multiple R-squared:  0.5754,	Adjusted R-squared:  0.5624 ). All regression coefficients, as well as their standard errors, t-scores, and p-values, are provided in the appendix, and checking of model assumptions revealed problems with autocorrelation, multicoliniearity and leverage points.
-
-#Appendix:
- # Coefficients:
-#  Estimate Std. Error t value Pr(>|t|)    
-#(Intercept) 54.8229912 16.7684285   3.269 0.001153 ** 
-#  NOX         -8.9699773  4.2132848  -2.129 0.033754 *  
-#  RM          -9.0204755  1.8141688  -4.972 9.17e-07 ***
-#  AGE          0.5199845  0.1238983   4.197 3.21e-05 ***
+  
+  #Reporting: The final model's formula was CRIM ~	NOX + RM + AGE +	DIS + RAD + B	+ LSTAT + 	MEDV + B:LSTAT + B:LSTAT + RM:B + AGE:B + DIS:B + AGE:LSTAT + RAD:LSTAT + LSTAT:MEDV. The above list of main effects and the two-way interactions were significant.
+  #The model was highly significant overall (F(15,490)=44.27, p<0.001) and achieved a high variance explanation (Multiple R-squared:  0.5754,	Adjusted R-squared:  0.5624 ). All regression coefficients, as well as their standard errors, t-scores, and p-values, are provided in the appendix, and checking of model assumptions revealed problems with autocorrelation, multicoliniearity and leverage points.
+  
+  #Appendix:
+  # Coefficients:
+  #  Estimate Std. Error t value Pr(>|t|)    
+  #(Intercept) 54.8229912 16.7684285   3.269 0.001153 ** 
+  #  NOX         -8.9699773  4.2132848  -2.129 0.033754 *  
+  #  RM          -9.0204755  1.8141688  -4.972 9.17e-07 ***
+  #  AGE          0.5199845  0.1238983   4.197 3.21e-05 ***
 #  DIS         -7.4956527  2.2111571  -3.390 0.000756 ***
 #  RAD          0.1748103  0.0973362   1.796 0.073120 .  
 #B           -0.1616095  0.0441979  -3.656 0.000283 ***
@@ -407,18 +407,18 @@ m2 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:Freqs+ C
              (1|Subject) + (1|Idiom), data=idiomData);m2
 
 summary(m2)
-#Calculate r2
-r.squaredGLMM(m2) #R2m (marginal r squared) is the one we want--it tells us how much variance we would expect to be explained in the population)
-#0.02632958= 2.63%
-
 # Random intercepts for each participant:
 coef(m2)
 
 drop1(m2, test="Chisq")
 # None of the interactions are significant and have a higher AIC, so we can drop all those interactions. Except for Condition:Knowledge, this one has a higher AIC and is almost significant.
 m3 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+ Condition:Knowledge +Transparency + (1|Idiom)
-            + (1|Subject), data=idiomData);m3
+           + (1|Subject), data=idiomData);m3
 summary(m3)
+
+#Calculate r2
+r.squaredGLMM(m3) #R2m (marginal r squared) is the one we want--it tells us how much variance we would expect to be explained in the population)
+#0.02403555= 2.4%
 
 #Assumptions:
 

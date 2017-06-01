@@ -324,8 +324,6 @@ Anova(newSecondHouseModel, type="III")
 #  DIS           372.0   1 11.4916 0.0007556 ***
 #  RAD           104.4   1  3.2254 0.0731195 .  
 #B             432.9   1 13.3700 0.0002833 ***
-#  LSTAT          11.8   1  0.3647 0.5461595    
-#MEDV           29.5   1  0.9122 0.3400061    
 #B:LSTAT      1092.0   1 33.7305 1.140e-08 ***
 #  RM:B          902.0   1 27.8610 1.962e-07 ***
 #  AGE:B         539.9   1 16.6766 5.176e-05 ***
@@ -396,7 +394,7 @@ summary(idiom_model)
 #To account for this, we can give each subject their own intercept (and thus their own regression line).
 
 #Run a mixed model with random intercepts
-m2 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:Freqs+ Condition:Knowledge + Condition: LP + Condition:Transparency + Freqs:Knowledge+ Freqs:LP +Freqs:LP+ Freqs:Transparency +Knowledge:LP + LP:Transparency + 
+m2 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+Transparency+ Condition:Freqs+ Condition:Knowledge + Condition: LP + Condition:Transparency + Freqs:Knowledge+ Freqs:LP + Freqs:Transparency +Knowledge:LP + LP:Transparency + Knowledge:Transparency+
              (1|Subject) + (1|Idiom), data=idiomData);m2
 
 summary(m2)
@@ -407,49 +405,50 @@ drop1(m2, test="Chisq")
 # None of the interactions are significant and have a higher AIC, so we can drop all those interactions. Except for Condition:Knowledge, this one has a higher AIC and is almost significant.
 m3 <- lmer(log_RTs~Condition+Freqs+Knowledge+LP+ Condition:Knowledge +Transparency + (1|Idiom)
            + (1|Subject), data=idiomData);m3
-summary(m3)
+drop1(m3, test="Chisq")
+m4 <- lmer(log_RTs~Condition+Freqs+Knowledge+ Condition:Knowledge  + (1|Idiom)
++ (1|Subject), data=idiomData);m3
+summary(m4)
 
 #Calculate r2
-r.squaredGLMM(m3) #R2m (marginal r squared) is the one we want--it tells us how much variance we would expect to be explained in the population)
-#0.02403555= 2.4%
+r.squaredGLMM(m4) #R2m (marginal r squared) is the one we want--it tells us how much variance we would expect to be explained in the population)
+#0.02397234= 2.4%
 
 #Assumptions:
 
 #Residuals:
 par(mfrow=c(2,2))
 par(mar=c(4,4,4,4))
-plot (m3)
+plot (m4)
 
 #Homoscedasticity: this assumption does hold, the datapoints don't really funnel out. Also it does look like a random array of dots evenly dispersed around zero. So this doesn't indicate variance across residuals and thus doesn't indicate heteroscedasticity. 
 
 #m3Norm<-qplot(sample=residuals(m3), stat="qq"); m3Norm
-qqnorm(residuals(m3))
+qqnorm(residuals(m4))
 #Normal distributed: the plot has pretty normal curve. Alot of the datapoints would fall kinda nicely on a linear line, so it's probably normal distributed.
 
-plot(allEffects(m3))
-# The 1th graph showed:Apparantly the condition had very little influence on the RTs. But the RTs from where the last words were in literal conditions were slightly lower.
-#The 2th graph showed: When words were more frequent, the RTs went down.
-#The 3th graph showed: As knowledge went up, it seemed that Rts went down.
-#The 4th graph showed: As words become more LP and thus easier to interpret, the RTs were lower.
-#The 5th graph showed: Then when Transparancy went up, RTs also went up. When the relation between the figurative and literal meanings went up, RTs went up.
-#The 6th graph showed:that when condition was figurative and knowledge was high, that RTs went down. And that when condition was lit, that a high or low knowledge didn't really matter.
+plot(allEffects(m4))
+#The graph showed:Apparantly the condition had very little influence on the RTs. But the RTs from where the last words were in literal conditions were slightly lower.
+#The graph showed: When words were more frequent, the RTs went down.
+#The graph showed: As knowledge went up, it seemed that Rts went down.
+#The graph showed:that when condition was figurative and knowledge was high, that RTs went down. And that when condition was lit, that a high or low knowledge didn't really matter.
 
-Anova(m3, type="III")
-summary(m3)
+Anova(m4, type="III")
+summary(m4)
 
-#The final model's formula was log_RTs~Condition+Freqs+Knowledge+LP+Transparency. The overall effect of knowledge and freqs were significant p<0.05.None of the interactions were significant. However the interaction between Condition:Knowledge was marginally significant. The model was significant overall (F(14,2051)=5.078, p<0.001) and explained small amount of variance (mult. R2=0.0240).All regression coefficients, as well as their standard errors, t-scores, and p-values, are provided in the appendix. Checking of model assumptions revealed no problems.
+#The final model's formula was log_RTs~Condition+Freqs+Knowledge+. The overall effect of knowledge and freqs were significant p<0.05.None of the interactions were significant. However the interaction between Condition:Knowledge was marginally significant. The model was significant overall (F(14,2051)=5.078, p<0.001) and explained small amount of variance (mult. R2=0.0240).All regression coefficients, as well as their standard errors, t-scores, and p-values, are provided in the appendix. Checking of model assumptions revealed no problems.
 
 #In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
 
-#There were no significant interacions. However the interaction between Condition:Knowledge was marginally significant, indicating that there was a slight relation between the two, that when the condition was fig, reaction times where still low when the participant had high knowledge of the word. And that knowledge didn't really matter when the conidition was lit. Apparantly also, the only signifcant predictors were knowledege and freqs wrt to reaction times. So, the more a idiom appeared resulted in faster reactions times. And when an idiom was more known to the participant, this also resulted in faster reaction times.
+#There were no significant interacions. However the interaction between Condition:Knowledge was marginally significant, indicating that there was a slight relation between the two, that when the condition was fig, reaction times where still low when the participant had high knowledge of the word. And that knowledge didn't really matter when the condition was lit. Apparantly also, the only signifcant predictors were knowledege and freqs wrt to reaction times. So, the more a idiom appeared resulted in faster reactions times. And when an idiom was more known to the participant, this also resulted in faster reaction times.
 
 #Appendix:
-#(Intercept)   6.529e+00  8.316e-02  2.730e+01  78.510  < 2e-16 ***
-#  ConditionLit -3.921e-03  8.964e-03  1.769e+03  -0.437   0.6619    
-#Freqs        -6.740e-02  1.173e-02  2.606e+02  -5.747 2.53e-08 ***
-#  Knowledge    -6.857e-03  3.023e-03  1.767e+03  -2.268   0.0234 *  
-#  LP           -8.874e-03  8.975e-03  2.130e+01  -0.989   0.3339    
-# Transparency  1.806e-02  2.309e-02  2.260e+01   0.782   0.4422 
+#Estimate Std. Error         df t value Pr(>|t|)    
+#(Intercept)             6.568e+00  4.373e-02  2.724e+02 150.214  < 2e-16 ***
+#  ConditionLit           -5.022e-02  2.673e-02  2.005e+03  -1.879   0.0605 .  
+#Freqs                  -6.432e-02  1.163e-02  2.477e+02  -5.533 8.01e-08 ***
+#  Knowledge              -1.031e-02  3.693e-03  1.720e+03  -2.792   0.0053 ** 
+#  ConditionLit:Knowledge  8.552e-03  4.577e-03  2.003e+03   1.868   0.0619 . 
 
 
 #########################
@@ -474,6 +473,7 @@ summary(clause_order_model)
 drop1(clause_order_model, test="F")
 # We can drop the interaction bias:storyType and Exp:Bias, because it has a lower AIC and is highly non-significant.
 clause_order_model2 <- lm(normV~Exp+storyType+bias+Exp: storyType + age+sex, data=clause_edit2)
+drop1(clause_order_model2)#No other predictors or interactions drop the AIC, so we can keep the rest. 
 
 summary(clause_order_model2)
 
@@ -539,4 +539,4 @@ summary(clause_order_model2)
 
 #In addition to the standard reporting of the results, please give a brief discussion of the findings. For example, if there is a significant interaction, talk about why this might be. What does the interaction actually mean logically? It's ok to speculate a bit here, since this is a statistics course and not a course about any one particular field.
 
-# Well the signifiacnt main effects were Exp, StorytYpe and sex. Thus we can conclude that whether a sentence was negative or positive, had an pretty good influence on how favorable people felt about the people out of the stories. Also apparantly the kind of storyType was highly related to how favorable people felt, thus an negative story influenced negative thoughts and a positive story influenced positive thoughts wrt to normV. Also apparantly the gender of a person, man or woman was related to the favorability. The only interaction that was significant was Exp:storyType. Indicating that: when Exp was pos and storyType was mixed, normV was indeed higher and it was indeed very low when Exp was neg and storyType was accordant. It was also indeed a bit lower when storytype was mixed and exp was neg, and higher when storyType was mixed, and exp was pos.
+# Well the signifiacnt main effects were Exp, Storytype and sex. Thus we can conclude that whether a sentence was negative or positive, had an pretty good influence on how favorable people felt about the people out of the stories. Also apparantly the kind of storyType was highly related to how favorable people felt, thus an negative story influenced negative thoughts and a positive story influenced positive thoughts wrt to normV. Also apparantly the gender of a person, man or woman was related to the favorability. The only interaction that was significant was Exp:storyType. Indicating that: when Exp was pos and storyType was mixed, normV was indeed higher and it was indeed very low when Exp was neg and storyType was accordant. It was also indeed a bit lower when storytype was mixed and exp was neg, and higher when storyType was mixed, and exp was pos.
